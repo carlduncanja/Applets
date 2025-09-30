@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
+import { ThemeToggle } from "@/components/ThemeToggle"
 
 export default function HomePage() {
   const router = useRouter()
@@ -224,11 +225,12 @@ export default function HomePage() {
                 <p className="text-sm text-muted-foreground">AI-powered app generator</p>
               </div>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>
 
-      <main className="flex-1 p-4 md:p-6 pb-32 overflow-auto">
+      <main className="flex-1 p-4 md:p-6 pb-36 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-4">
           {isLoadingApps ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -376,31 +378,29 @@ export default function HomePage() {
       </main>
 
       {/* Floating Composer */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto p-4">
-          <div className="bg-background border border-border rounded-2xl shadow-xl overflow-hidden">
-            {showComposer && (
-              <div className="border-b border-border p-4">
-                {uploadedImage && (
-                  <div className="relative inline-block mb-2">
-                    <img 
-                      src={uploadedImage} 
-                      alt="Upload preview" 
-                      className="max-h-32 rounded-lg border border-border"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                      onClick={() => setUploadedImage(null)}
-                    >
-                      ×
-                    </Button>
-                  </div>
-                )}
+      <div className="fixed bottom-4 left-0 right-0 z-50">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="bg-background border border-border rounded-2xl overflow-hidden">
+            {uploadedImage && (
+              <div className="p-4">
+                <div className="relative inline-block mb-2">
+                  <img 
+                    src={uploadedImage} 
+                    alt="Upload preview" 
+                    className="max-h-32 rounded-lg border border-border"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                    onClick={() => setUploadedImage(null)}
+                  >
+                    ×
+                  </Button>
+                </div>
               </div>
             )}
-            <div className="flex items-end gap-2 p-3">
+            <div className="flex items-center gap-2 p-3">
               <div className="flex gap-1">
                 <input
                   type="file"
@@ -419,7 +419,7 @@ export default function HomePage() {
                 </Button>
               </div>
               <Textarea
-                placeholder="Ask v0 to build... (e.g., Create a todo list app with database persistence)"
+                placeholder="Ask generative application to build..."
                 value={composerText}
                 onChange={(e) => setComposerText(e.target.value)}
                 onFocus={() => setShowComposer(true)}
@@ -429,24 +429,22 @@ export default function HomePage() {
                     handleGenerateApp()
                   }
                 }}
-                className="flex-1 min-h-[52px] max-h-48 resize-none border-0 focus-visible:ring-0 shadow-none bg-transparent"
+                style={{ boxShadow: 'none', outline: 'none', height: '40px', minHeight: '40px', maxHeight: '40px', resize: 'none', lineHeight: '1.5', overflow: 'hidden' }}
+                className="flex-1 !border-0 !ring-0 !ring-offset-0 !outline-none shadow-none bg-transparent focus:!border-0 focus:!ring-0 focus:!outline-none focus-visible:!ring-0 focus-visible:!border-0 focus-visible:!outline-none py-2.5"
                 rows={1}
               />
               <Button
                 onClick={handleGenerateApp}
                 disabled={!composerText.trim()}
-                size="icon"
-                className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                variant="default"
+                className="flex-shrink-0 h-10 px-4 gap-2"
               >
-                <Sparkles className="h-5 w-5" />
+                <span className="font-semibold">Run</span>
+                <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-primary-foreground/20 bg-primary-foreground/10 px-1.5 font-mono text-[10px] font-medium opacity-100">
+                  <span className="text-xs">⌘</span>↵
+                </kbd>
               </Button>
             </div>
-            {showComposer && (
-              <div className="px-4 pb-3 flex items-center justify-between text-xs text-muted-foreground">
-                <span>Press Cmd+Enter to generate</span>
-                {uploadedImage && <span>Image attached</span>}
-              </div>
-            )}
           </div>
         </div>
       </div>
