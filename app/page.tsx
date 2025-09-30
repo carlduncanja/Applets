@@ -392,26 +392,54 @@ export default function HomePage() {
       
       toast.success('Executing...')
       
-      // Check if this is a "delete all" or specific item action
-      const isDeleteAll = dataAction.action === 'deleteAll' || (dataAction.action === 'delete' && dataAction.query === 'all')
-      
-      if (isDeleteAll) {
-        // Delete all entities of this type
-        const response = await fetch('/api/entities/delete-many', {
-          method: 'DELETE',
+      // Handle scoped operations
+      if (dataAction.scope === 'all' || dataAction.action === 'deleteAll') {
+        // Delete/update ALL entities of this type
+        const endpoint = dataAction.action === 'deleteAll' ? '/api/entities/delete-many' : '/api/entities/update-many'
+        const method = dataAction.action === 'deleteAll' ? 'DELETE' : 'PUT'
+        
+        const response = await fetch(endpoint, {
+          method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             entityType: dataAction.entityType,
             filters: {},
+            updates: dataAction.updates,
             soft: true
           })
         })
         
         if (response.ok) {
           const result = await response.json()
-          toast.success(`Deleted all ${dataAction.entityType}s (${result.count} items)`)
+          const actionName = dataAction.action === 'deleteAll' ? 'Deleted' : 'Updated'
+          toast.success(`${actionName} all ${dataAction.entityType}s (${result.count} items)`)
+          if (dataAction.entityType === 'app') loadApps()
         } else {
-          toast.error('Failed to delete items')
+          toast.error('Failed to execute action')
+        }
+      } else if (dataAction.scope === 'some' && (dataAction.action === 'deleteMany' || dataAction.action === 'updateMany')) {
+        // Delete/update SOME entities with filters
+        const endpoint = dataAction.action === 'deleteMany' ? '/api/entities/delete-many' : '/api/entities/update-many'
+        const method = dataAction.action === 'deleteMany' ? 'DELETE' : 'PUT'
+        
+        const response = await fetch(endpoint, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityType: dataAction.entityType,
+            filters: dataAction.filters || {},
+            updates: dataAction.updates,
+            soft: true
+          })
+        })
+        
+        if (response.ok) {
+          const result = await response.json()
+          const actionName = dataAction.action === 'deleteMany' ? 'Deleted' : 'Updated'
+          toast.success(`${actionName} ${result.count} ${dataAction.entityType}(s)`)
+          if (dataAction.entityType === 'app') loadApps()
+        } else {
+          toast.error('Failed to execute action')
         }
       } else {
         // Find specific entity if needed
