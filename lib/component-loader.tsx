@@ -34,6 +34,11 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
   };
   
   try {
+    // Validate code is not empty or undefined
+    if (!code || typeof code !== 'string' || code.trim() === '') {
+      throw new Error('Component code is empty or invalid');
+    }
+    
     // Clean the code - remove any import statements since we're providing dependencies
     let cleanCode = code
       .replace(/^import\s+.*?\s+from\s+['"]react['"];?\s*$/gm, '')
@@ -76,6 +81,26 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
       throw new Error('No React component found. Detected name: ${componentName || 'none'}. Expected a const/let/var starting with capital letter.');
     `;
     
+    // API Key helper function
+    const getApiKey = async (keyName: string): Promise<string | null> => {
+      try {
+        const response = await fetch('/api/api-keys/get', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: keyName })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          return result.value;
+        }
+        return null;
+      } catch (error) {
+        console.error('Failed to get API key:', error);
+        return null;
+      }
+    };
+    
     // Create a function that executes the code with React dependencies and shadcn components
     const ComponentFactory = new Function(
       'React',
@@ -86,6 +111,7 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
       'useRef',
       'createElement',
       'triggerFileInput',
+      'getApiKey',
       // shadcn components
       'Button',
       'Input',
@@ -110,6 +136,7 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
       useRef,
       React.createElement,
       triggerFileInput,
+      getApiKey,
       // shadcn components
       Button,
       Input,

@@ -249,6 +249,16 @@ const Calculator = () => {
 
 This creates a proper grid calculator that works in both light and dark mode!
 
+API KEY MANAGEMENT (BUILT-IN):
+Your apps can securely retrieve API keys for external services:
+
+const weatherApiKey = await getApiKey('openweather'); // Get OpenWeather API key
+const giphyKey = await getApiKey('giphy'); // Get Giphy API key
+
+Common API keys: 'openweather', 'giphy', 'newsapi', 'tmdb', 'spotify', 'youtube'
+
+If an API key is needed but not set, show a friendly message asking user to configure it.
+
 UTILITY ENDPOINT (BUILT-IN):
 Your apps have access to a universal utility endpoint at /api/util for external operations:
 

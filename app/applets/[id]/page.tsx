@@ -6,7 +6,7 @@ import { useEntityStore } from "@/store/entity-store"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Code, Play, Loader2, Brain, History, RotateCcw, Save } from "lucide-react"
+import { ArrowLeft, Code, Play, Loader2, Brain, History, RotateCcw, Save, Key, X } from "lucide-react"
 import { toast } from "sonner"
 import React from 'react'
 import { loadComponentFromCode, ComponentErrorBoundary } from '@/lib/component-loader'
@@ -44,6 +44,8 @@ export default function AppletRunnerPage() {
   const [editedCode, setEditedCode] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isReady, setIsReady] = useState(false)
+  const [missingApiKeys, setMissingApiKeys] = useState<string[]>([])
+  const [showApiKeyError, setShowApiKeyError] = useState(false)
 
   useEffect(() => {
     loadApp()
@@ -69,6 +71,40 @@ export default function AppletRunnerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ appId })
       })
+
+      // Check for API key usage
+      const apiKeyMatches = result.data.code.match(/getApiKey\(['"]([^'"]+)['"]\)/g) || []
+      const requiredKeys = apiKeyMatches.map((match: string) => {
+        const keyMatch = match.match(/getApiKey\(['"]([^'"]+)['"]\)/)
+        return keyMatch ? keyMatch[1] : null
+      }).filter(Boolean)
+      
+      if (requiredKeys.length > 0) {
+        // Store required API keys in app metadata
+        if (!result.data.requiredApiKeys || JSON.stringify(result.data.requiredApiKeys) !== JSON.stringify(requiredKeys)) {
+          await fetch('/api/entities/update', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: appId,
+              updates: { requiredApiKeys: requiredKeys }
+            })
+          })
+        }
+
+        // Check which keys are missing
+        const keysResponse = await fetch('/api/api-keys')
+        if (keysResponse.ok) {
+          const configuredKeys = await keysResponse.json()
+          const configuredKeyNames = configuredKeys.map((k: any) => k.data.name)
+          const missing = requiredKeys.filter((k: any) => !configuredKeyNames.includes(k))
+          
+          if (missing.length > 0) {
+            setMissingApiKeys(missing)
+            setShowApiKeyError(true)
+          }
+        }
+      }
 
       // Load the component
       try {
@@ -209,19 +245,19 @@ export default function AppletRunnerPage() {
   return (
     <div className="h-screen overflow-hidden bg-background flex flex-col relative animate-in fade-in duration-200">
       <header className="border-b border-border bg-card z-50 flex-shrink-0">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
+                size="icon"
                 onClick={() => router.push('/')}
-                className="gap-2"
+                className="h-9 w-9"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back
+                <ArrowLeft className="h-5 w-5" />
               </Button>
               <div className="border-l border-border pl-3">
-                <h1 className="text-lg font-semibold text-foreground">{app.data.name}</h1>
+                <h1 className="text-xl font-bold text-foreground">{app.data.name}</h1>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -247,6 +283,44 @@ export default function AppletRunnerPage() {
           </div>
         </div>
       </header>
+
+      {/* API Key Warning Banner */}
+      {showApiKeyError && missingApiKeys.length > 0 && (
+        <div className="bg-destructive/10 border-b border-destructive/20 px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Key className="h-5 w-5 text-destructive" />
+              <div>
+                <p className="text-sm font-semibold text-destructive">
+                  Missing API Keys: {missingApiKeys.join(', ')}
+                </p>
+                <p className="text-xs text-destructive/80">
+                  This app requires API keys to function properly
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/settings')}
+                className="border-destructive/30 text-destructive hover:bg-destructive/10"
+              >
+                <Key className="h-4 w-4 mr-1" />
+                Configure Keys
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                onClick={() => setShowApiKeyError(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 overflow-hidden relative">
         {isIterating ? (
