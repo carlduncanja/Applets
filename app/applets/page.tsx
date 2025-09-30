@@ -38,7 +38,6 @@ export default function AppletsPage() {
   const { findEntities, deleteEntity, registerSchema } = useEntityStore()
   
   const [apps, setApps] = useState<any[]>([])
-  const [searchTerm, setSearchTerm] = useState('')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [appToDelete, setAppToDelete] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -104,34 +103,29 @@ export default function AppletsPage() {
       return
     }
 
-    setIsGenerating(true)
+    setShowCreateDialog(false)
+    toast.success('Generating app in background... This will take 10-30 seconds.')
+    setNewApp({ name: '', prompt: '' })
     
-    try {
-      const response = await fetch('/api/apps/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          appName: newApp.name,
-          prompt: newApp.prompt
-        })
+    // Start generation in background
+    fetch('/api/apps/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        appName: newApp.name,
+        prompt: newApp.prompt
       })
-
-      if (!response.ok) {
+    }).then(async (response) => {
+      if (response.ok) {
+        toast.success('App generated successfully!')
+        loadApps()
+      } else {
         const error = await response.json()
-        throw new Error(error.error || 'Failed to generate app')
+        toast.error(error.error || 'Failed to generate app')
       }
-
-      const result = await response.json()
-      
-      toast.success('App generated successfully!')
-      setShowCreateDialog(false)
-      setNewApp({ name: '', prompt: '' })
-      loadApps()
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to generate app')
-    } finally {
-      setIsGenerating(false)
-    }
+    }).catch((error) => {
+      toast.error('Failed to generate app: ' + error.message)
+    })
   }
 
   const handleDeleteApp = async () => {
@@ -156,10 +150,6 @@ export default function AppletsPage() {
     }
   }
 
-  const filteredApps = apps.filter(app => 
-    app.data.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    app.data.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
 
   return (
     <div className="min-h-screen-ios bg-background flex flex-col">
@@ -188,20 +178,9 @@ export default function AppletsPage() {
 
       <main className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-4">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Input
-                placeholder="Search apps..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          {filteredApps.length > 0 ? (
+          {apps.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredApps.map((app) => {
+              {apps.map((app) => {
                 const Icon = getIconForType(app.data.componentType)
                 return (
                   <Card 

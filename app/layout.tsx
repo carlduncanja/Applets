@@ -8,8 +8,8 @@ import { Toaster } from "sonner"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Entity Manager - Flexible Data Storage",
-  description: "Schema-flexible database pattern for any application",
+  title: "Generative Application",
+  description: "AI-powered app generator with schema-flexible database",
   generator: "Cursor",
 }
 

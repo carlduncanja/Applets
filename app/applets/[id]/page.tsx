@@ -92,33 +92,35 @@ export default function AppletRunnerPage() {
 
     setIsIterating(true)
     setShowIterateDialog(false)
+    const promptText = iterationPrompt
+    setIterationPrompt('')
+    
+    toast.success('Improving app in background...')
 
-    try {
-      const response = await fetch('/api/apps/iterate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          appId: appId,
-          iterationPrompt: iterationPrompt
-        })
+    // Start iteration in background without waiting
+    fetch('/api/apps/iterate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        appId: appId,
+        iterationPrompt: promptText
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to iterate on app')
-      }
-
-      const result = await response.json()
-      toast.success(`App updated! ${result.changes || 'Improvements applied'}`)
-      setIterationPrompt('')
-      
-      // Reload the app
-      await loadApp()
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to iterate on app')
-    } finally {
+    }).then(async (response) => {
       setIsIterating(false)
-    }
+      
+      if (response.ok) {
+        const result = await response.json()
+        toast.success(`App updated! ${result.changes || 'Improvements applied'}`)
+        // Reload the app
+        await loadApp()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to improve app')
+      }
+    }).catch((error) => {
+      setIsIterating(false)
+      toast.error('Failed to improve app: ' + error.message)
+    })
   }
 
   const handleRollback = async (targetVersion: number) => {
@@ -211,7 +213,7 @@ export default function AppletRunnerPage() {
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
-                onClick={() => router.push('/applets')}
+                onClick={() => router.push('/')}
                 className="gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />

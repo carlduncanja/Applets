@@ -1,6 +1,8 @@
-# Entity Manager - Schema-Flexible Database Pattern
+# Generative Application
 
-A high-performance, schema-flexible database pattern using SQLite, Next.js, and Tailwind CSS. Store any type of data for any application without modifying the schema.
+An AI-powered application generator that creates fully functional apps from natural language prompts. Built with Claude 4.5 Sonnet, Next.js, SQLite, and Tailwind CSS.
+
+Generate complete web applications instantly - from calculators and todo lists to browsers and dashboards - all without writing a single line of code.
 
 ## Features
 

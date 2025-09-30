@@ -1,5 +1,6 @@
 {
   "name": "generative-application",
+  "description": "AI-powered application generator with schema-flexible database",
   "version": "0.1.0",
   "private": true,
   "scripts": {
