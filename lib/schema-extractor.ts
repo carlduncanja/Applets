@@ -13,33 +13,35 @@ export function extractSchemasFromCode(code: string): EntitySchema[] {
   const schemas: Map<string, EntitySchema> = new Map();
   
   try {
-    // Match fetch calls to /api/entities with POST method
-    const createRegex = /fetch\(['"`]\/api\/entities['"`],\s*\{[^}]*method:\s*['"`]POST['"`][^}]*body:\s*JSON\.stringify\((\{[^}]*entityType:\s*['"`]([^'"`]+)['"`][^}]*data:\s*(\{[^}]+\})[^}]*\})\)/g;
+    // Match fetch calls to /api/entities with POST method - improved regex
+    // This handles multi-line JSON.stringify calls better
+    const createRegex = /fetch\(['"`]\/api\/entities['"`],\s*\{[\s\S]*?method:\s*['"`]POST['"`][\s\S]*?body:\s*JSON\.stringify\(\{[\s\S]*?entityType:\s*['"`]([^'"`]+)['"`][\s\S]*?data:\s*\{([^}]*)\}[\s\S]*?\}\)/g;
     
     let match;
     while ((match = createRegex.exec(code)) !== null) {
-      const entityType = match[2];
-      const dataString = match[3];
+      const entityType = match[1];
+      const dataString = match[2];
       
       // Extract field names from the data object
-      const fieldRegex = /(\w+):/g;
+      // Match field: value patterns
+      const fieldRegex = /(\w+)\s*:/g;
       const fields: string[] = [];
       let fieldMatch;
       
       while ((fieldMatch = fieldRegex.exec(dataString)) !== null) {
         const fieldName = fieldMatch[1];
-        if (!fields.includes(fieldName)) {
+        if (!fields.includes(fieldName) && fieldName !== 'entityType') {
           fields.push(fieldName);
         }
       }
       
-      if (!schemas.has(entityType)) {
+      if (!schemas.has(entityType) && fields.length > 0) {
         schemas.set(entityType, {
           entityType,
           fields,
           example: {}
         });
-      } else {
+      } else if (schemas.has(entityType)) {
         // Merge fields
         const existing = schemas.get(entityType)!;
         fields.forEach(f => {

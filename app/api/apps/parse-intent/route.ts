@@ -47,7 +47,14 @@ Available API keys: ${availableApiKeys?.join(', ') || 'none configured'}${schema
 If user wants to create an app that requires an API key not in the list, inform them in the description.
 Use previous conversation context to understand references like "it", "that one", "the same", etc.
 
-**IMPORTANT**: When creating/updating/filtering data, ALWAYS use the exact field names from the schemas above. If a schema exists for an entity type, follow it strictly.
+**CRITICAL SCHEMA RULES - FOLLOW EXACTLY OR THE OPERATION WILL FAIL**:
+1. ONLY use entity types that have defined schemas above
+2. ONLY use field names that appear in the schema for that entity type
+3. If no schema exists for an entity type, you CANNOT create/update/filter it
+4. Field names are CASE-SENSITIVE and must match EXACTLY
+5. Do NOT invent new field names - use what's in the schema
+
+Example: If "expense" schema is "{ description, amount, category, date }", you MUST use "description" not "name".
 
 Determine if the user wants to:
 1. OPEN an app
@@ -109,13 +116,13 @@ User: "mark all urgent todos as done" → {"intent": "data_action", "description
 User: "create a weather app" → {"intent": "create", "appPrompt": "create a weather app", "description": "Create a weather app", "needsConfirmation": false}
 User: "what do I have to do today" → {"intent": "question", "question": "what do I have to do today", "description": "Answer question about tasks", "needsConfirmation": false}
 User: "add bookmark to google.com" → {"intent": "data_action", "description": "Add bookmark", "needsConfirmation": false, "dataAction": {"action": "create", "entityType": "bookmark", "scope": "one", "data": {"url": "https://google.com", "title": "Google"}}}
-User: "create 5 todos" → {"intent": "data_action", "description": "Create 5 todos", "needsConfirmation": false, "dataAction": {"action": "createMany", "entityType": "todo", "scope": "batch", "count": 5, "items": [{"title": "Todo 1", "completed": false}, {"title": "Todo 2", "completed": false}, {"title": "Todo 3", "completed": false}, {"title": "Todo 4", "completed": false}, {"title": "Todo 5", "completed": false}]}}
-User: "add 3 bookmarks for google, youtube, and github" → {"intent": "data_action", "description": "Add 3 bookmarks", "needsConfirmation": false, "dataAction": {"action": "createMany", "entityType": "bookmark", "scope": "batch", "items": [{"url": "https://google.com", "title": "Google"}, {"url": "https://youtube.com", "title": "YouTube"}, {"url": "https://github.com", "title": "GitHub"}]}}
+User: "create 5 todos" → Look up schema for "todo" or "todo_with_dates" from available schemas, then use those exact field names
+User: "add 3 bookmarks for google, youtube, and github" → Look up schema for "bookmark" from available schemas, then use those exact field names
 User: "remove the google bookmark" → {"intent": "data_action", "description": "Remove Google bookmark", "needsConfirmation": true, "dataAction": {"action": "delete", "entityType": "bookmark", "scope": "one", "query": "google"}}
 User: "delete all high priority notes" → {"intent": "data_action", "description": "Delete all high priority notes", "needsConfirmation": true, "dataAction": {"action": "deleteMany", "entityType": "note", "scope": "some", "filters": {"priority": "high"}}}
 User: "rename todo list to my tasks" → {"intent": "data_action", "description": "Rename app", "needsConfirmation": true, "dataAction": {"action": "update", "entityType": "app", "scope": "one", "query": "todo list", "updates": {"name": "My Tasks"}}}
-User: "delete all completed todos and create 5 new ones" → {"intent": "chain", "description": "Delete completed todos and create 5 new todos", "needsConfirmation": true, "actions": [{"intent": "data_action", "dataAction": {"action": "deleteMany", "entityType": "todo", "scope": "some", "filters": {"completed": true}}}, {"intent": "data_action", "dataAction": {"action": "createMany", "entityType": "todo", "scope": "batch", "items": [{"title": "Todo 1", "completed": false}, {"title": "Todo 2", "completed": false}, {"title": "Todo 3", "completed": false}, {"title": "Todo 4", "completed": false}, {"title": "Todo 5", "completed": false}]}}]}
-User: "delete those 5 notes and generate 5 bible verses" → {"intent": "chain", "description": "Delete 5 notes and create 5 bible verse notes", "needsConfirmation": true, "actions": [{"intent": "data_action", "dataAction": {"action": "deleteMany", "entityType": "note", "scope": "batch", "count": 5}}, {"intent": "data_action", "dataAction": {"action": "createMany", "entityType": "note", "scope": "batch", "items": [{"title": "Genesis 1:1", "content": "In the beginning God created the heavens and the earth"}, {"title": "John 3:16", "content": "For God so loved the world..."}, {"title": "Psalm 23:1", "content": "The Lord is my shepherd..."}, {"title": "Proverbs 3:5", "content": "Trust in the Lord with all your heart..."}, {"title": "Philippians 4:13", "content": "I can do all things through Christ..."}]}}]}`;
+
+REMEMBER: Always look up entity types and field names from the schemas above. Never invent field names!`;
 
     const response = await client.chat.completions.create({
       model: 'claude-sonnet-4-5-20250929',
@@ -128,6 +135,12 @@ User: "delete those 5 notes and generate 5 bible verses" → {"intent": "chain",
       temperature: 0.3,
       max_tokens: 500,
     });
+
+    // Check if response has choices
+    if (!response.choices || response.choices.length === 0) {
+      console.error('Invalid API response:', JSON.stringify(response, null, 2));
+      throw new Error('Invalid response from AI - no choices returned');
+    }
 
     const content = response.choices[0].message.content;
     

@@ -190,9 +190,12 @@ export default function HomePage() {
   // Scroll to bottom when chat messages change
   useEffect(() => {
     if (viewMode === 'chat' && chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
     }
-  }, [chatHistory, multiStepExecution?.messages, viewMode])
+  }, [chatHistory, multiStepExecution, generatingApps, viewMode])
 
   const loadApiKeys = async () => {
     try {
@@ -508,7 +511,12 @@ export default function HomePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             question: intent.question,
-            chatHistory: chatHistory
+            chatHistory: chatHistory,
+            availableApps: apps.map(a => ({ 
+              name: a.data.name, 
+              id: a.id,
+              schemas: a.data.schemas || []
+            }))
           })
         })
         
@@ -914,7 +922,12 @@ export default function HomePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             question: step.query,
-            chatHistory: multiStepExecution?.messages || []
+            chatHistory: multiStepExecution?.messages || [],
+            availableApps: apps.map(a => ({ 
+              name: a.data.name, 
+              id: a.id,
+              schemas: a.data.schemas || []
+            }))
           })
         })
 
@@ -1055,6 +1068,39 @@ export default function HomePage() {
             const result = await response.json()
             stepResult = `Deleted ${result.count} ${dataAction.entityType}(s)`
             if (dataAction.entityType === 'app') loadApps()
+          }
+        } else if (dataAction.action === 'update') {
+          // Single entity update - need to find the entity first
+          const findResponse = await fetch('/api/entities/find', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              entityType: dataAction.entityType,
+              filters: dataAction.filters || {},
+              options: { limit: 1 }
+            })
+          })
+          
+          if (findResponse.ok) {
+            const entities = await findResponse.json()
+            if (entities.length > 0) {
+              const entityId = entities[0].id
+              const updateResponse = await fetch('/api/entities/update', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  id: entityId,
+                  updates: dataAction.updates
+                })
+              })
+              
+              if (updateResponse.ok) {
+                stepResult = `Updated ${dataAction.entityType}`
+                if (dataAction.entityType === 'app') loadApps()
+              }
+            } else {
+              stepResult = `No ${dataAction.entityType} found to update`
+            }
           }
         } else if (dataAction.action === 'updateMany') {
           const response = await fetch('/api/entities/update-many', {

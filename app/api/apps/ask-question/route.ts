@@ -4,7 +4,7 @@ import { getEntityManager } from '@/lib/entity-manager';
 
 export async function POST(request: NextRequest) {
   try {
-    const { question, relevantEntityTypes, chatHistory } = await request.json();
+    const { question, relevantEntityTypes, chatHistory, availableApps } = await request.json();
     
     if (!question) {
       return NextResponse.json(
@@ -61,10 +61,22 @@ export async function POST(request: NextRequest) {
         ).join('\n')}`
       : '';
     
+    // Format schemas for AI
+    const schemasInfo = availableApps && availableApps.length > 0
+      ? '\n\nKnown Entity Schemas:\n' + availableApps
+          .filter((app: any) => app.schemas && app.schemas.length > 0)
+          .map((app: any) => 
+            `${app.name} uses:\n` + app.schemas.map((schema: any) => 
+              `  - ${schema.entityType}: { ${schema.fields.join(', ')} }`
+            ).join('\n')
+          )
+          .join('\n')
+      : '';
+    
     const systemPrompt = `You are a helpful assistant that answers questions about the user's data.
 
 Total entities in database: ${totalEntities}
-Entity types available: ${allEntityTypes.join(', ') || 'none'}${conversationContext}
+Entity types available: ${allEntityTypes.join(', ') || 'none'}${schemasInfo}${conversationContext}
 
 Available data:
 ${JSON.stringify(contextData, null, 2)}
@@ -77,6 +89,8 @@ Important:
 - Be concise and helpful
 - Format lists with bullet points or numbers
 - If no relevant data exists, politely explain what data IS available
+- When mentioning field names, use the EXACT names from the schemas above
+- Do NOT invent field names that don't exist in the schemas
 
 Return ONLY a JSON object:
 {
@@ -93,8 +107,14 @@ Return ONLY a JSON object:
         }
       ],
       temperature: 0.5,
-      max_tokens: 500,
+      max_tokens: 8000,
     });
+
+    // Check if response has choices
+    if (!response.choices || response.choices.length === 0) {
+      console.error('Invalid API response:', JSON.stringify(response, null, 2));
+      throw new Error('Invalid response from AI - no choices returned');
+    }
 
     const content = response.choices[0].message.content;
     

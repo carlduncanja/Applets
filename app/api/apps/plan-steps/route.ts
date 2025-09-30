@@ -40,7 +40,14 @@ ${currentStep ? `Current step: ${currentStep}\nPrevious step data: ${JSON.string
 
 Use previous conversation context to understand references and maintain continuity.
 
-**IMPORTANT**: When creating/updating/filtering data, ALWAYS use the exact field names from the schemas above. If a schema exists for an entity type, follow it strictly.
+**CRITICAL SCHEMA RULES - FOLLOW EXACTLY OR THE OPERATION WILL FAIL**:
+1. ONLY use entity types that have defined schemas above
+2. ONLY use field names that appear in the schema for that entity type
+3. If no schema exists for an entity type, you CANNOT create/update/filter it
+4. Field names are CASE-SENSITIVE and must match EXACTLY
+5. Do NOT invent new field names - use what's in the schema
+
+Example: If "expense" schema is "{ description, amount, category, date }", you MUST use "description" not "name".
 
 Your job is to:
 1. Analyze the user's request
@@ -120,8 +127,14 @@ Single-step tasks (return needsMultiStep: false):
         }
       ],
       temperature: 0.3,
-      max_tokens: 800,
+      max_tokens: 10000,
     });
+
+    // Check if response has choices
+    if (!response.choices || response.choices.length === 0) {
+      console.error('Invalid API response:', JSON.stringify(response, null, 2));
+      throw new Error('Invalid response from AI - no choices returned');
+    }
 
     const content = response.choices[0].message.content;
     
