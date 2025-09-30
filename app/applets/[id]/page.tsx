@@ -6,10 +6,21 @@ import { useEntityStore } from "@/store/entity-store"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Code, Play, Loader2 } from "lucide-react"
+import { ArrowLeft, Code, Play, Loader2, Sparkles, History, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 import React from 'react'
 import { loadComponentFromCode, ComponentErrorBoundary } from '@/lib/component-loader'
+import { Textarea } from "@/components/ui/textarea"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function AppletRunnerPage() {
   const router = useRouter()
@@ -22,6 +33,10 @@ export default function AppletRunnerPage() {
   const [showCode, setShowCode] = useState(false)
   const [AppComponent, setAppComponent] = useState<React.ComponentType<any> | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showIterateDialog, setShowIterateDialog] = useState(false)
+  const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const [iterationPrompt, setIterationPrompt] = useState('')
+  const [isIterating, setIsIterating] = useState(false)
 
   useEffect(() => {
     loadApp()
@@ -64,12 +79,79 @@ export default function AppletRunnerPage() {
     }
   }
 
-  if (isLoading) {
+  const handleIterate = async () => {
+    if (!iterationPrompt.trim()) {
+      toast.error('Please describe the changes you want')
+      return
+    }
+
+    setIsIterating(true)
+    setShowIterateDialog(false)
+
+    try {
+      const response = await fetch('/api/apps/iterate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appId: appId,
+          iterationPrompt: iterationPrompt
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to iterate on app')
+      }
+
+      const result = await response.json()
+      toast.success(`App updated! ${result.changes || 'Improvements applied'}`)
+      setIterationPrompt('')
+      
+      // Reload the app
+      await loadApp()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to iterate on app')
+    } finally {
+      setIsIterating(false)
+    }
+  }
+
+  const handleRollback = async (targetVersion: number) => {
+    setShowVersionHistory(false)
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/apps/rollback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appId: appId,
+          targetVersion: targetVersion
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to rollback app')
+      }
+
+      const result = await response.json()
+      toast.success(result.message || 'App rolled back successfully')
+      
+      // Reload the app
+      await loadApp()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to rollback app')
+      setIsLoading(false)
+    }
+  }
+
+  if (isLoading || isIterating) {
     return (
       <div className="min-h-screen-ios bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
-          <p className="text-muted-foreground">Loading app...</p>
+          <p className="text-muted-foreground">{isIterating ? 'Improving app with AI...' : 'Loading app...'}</p>
         </div>
       </div>
     )
@@ -96,6 +178,21 @@ export default function AppletRunnerPage() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowIterateDialog(true)}
+                className="border-purple-500/50 hover:bg-purple-500/10"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Improve with AI
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowVersionHistory(true)}
+              >
+                <History className="h-4 w-4 mr-2" />
+                v{app.data.version || 1}
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowCode(!showCode)}
@@ -194,6 +291,140 @@ export default function AppletRunnerPage() {
           </Card>
         </div>
       </main>
+
+      {/* Iterate Dialog */}
+      <AlertDialog open={showIterateDialog} onOpenChange={setShowIterateDialog}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              Improve App with AI
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Describe the changes or improvements you want to make to this app.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <Textarea
+              placeholder="Example: Add a dark mode toggle, change the button colors to blue, add sound effects, improve the layout..."
+              value={iterationPrompt}
+              onChange={(e) => setIterationPrompt(e.target.value)}
+              className="min-h-32"
+            />
+            
+            <div className="bg-muted p-3 rounded-lg text-sm text-muted-foreground">
+              <p className="font-semibold mb-1">💡 Tips:</p>
+              <ul className="space-y-1 text-xs">
+                <li>• Be specific about what you want to change</li>
+                <li>• The AI will maintain your app's functionality</li>
+                <li>• Previous versions are saved automatically</li>
+                <li>• You can rollback if you don't like the changes</li>
+              </ul>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              onClick={handleIterate}
+              disabled={!iterationPrompt.trim() || isIterating}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            >
+              {isIterating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Improving...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Improve App
+                </>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Version History Dialog */}
+      <AlertDialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Version History
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Current version: v{app.data.version || 1}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="py-4 max-h-96 overflow-y-auto">
+            {app.data.versionHistory && app.data.versionHistory.length > 0 ? (
+              <div className="space-y-3">
+                {/* Current Version */}
+                <div className="border-2 border-purple-500/50 rounded-lg p-4 bg-purple-500/5">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-purple-500">Current</Badge>
+                        <span className="font-semibold">Version {app.data.version || 1}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {app.data.description}
+                      </p>
+                    </div>
+                  </div>
+                  {app.data.lastIteration && (
+                    <div className="mt-3 text-xs bg-muted p-2 rounded">
+                      <p className="text-muted-foreground">Last change: {app.data.lastIteration.changes}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Previous Versions */}
+                {[...app.data.versionHistory].reverse().map((version: any) => (
+                  <div key={version.version} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold">Version {version.version}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(version.timestamp).toLocaleDateString()} at {new Date(version.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {version.description}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRollback(version.version)}
+                        className="ml-2"
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1" />
+                        Restore
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <History className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No version history yet</p>
+                <p className="text-sm">Use "Improve with AI" to create new versions</p>
+              </div>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
