@@ -55,6 +55,8 @@ CRITICAL REQUIREMENTS:
 - Maintain the same component name: ${app.data.name}
 - Keep the overall structure but apply the requested changes
 - The code must be executable without any transpilation
+- PREVENT OVERFLOW: Use h-screen flex flex-col for full-page apps, overflow-auto for scrollable areas
+- NEVER let content extend beyond viewport - always add max-height and overflow constraints
 
 Current component code:
 \`\`\`javascript

@@ -314,14 +314,28 @@ export default function HomePage() {
         )
         
         if (!appToImprove) {
-          toast.error(`App "${intent.targetApp}" not found`)
+          setChatHistory(prev => [...prev, {
+            question: composerText.trim(),
+            answer: `❌ App "${intent.targetApp}" not found. Available apps: ${apps.map(a => a.data.name).join(', ')}`,
+            timestamp: Date.now()
+          }])
+          setComposerText('')
+          setShowComposer(false)
+          setViewMode('chat')
           setIsParsingIntent(false)
           return
         }
         
+        // Add user message and working message to chat
+        setChatHistory(prev => [...prev, {
+          question: composerText.trim(),
+          answer: `⚙️ Improving ${intent.targetApp}... This may take a moment.`,
+          timestamp: Date.now()
+        }])
+        
         setComposerText('')
         setShowComposer(false)
-        toast.success('Improving app...')
+        setViewMode('chat')
         
         // Call iterate API
         fetch('/api/apps/iterate', {
@@ -336,22 +350,55 @@ export default function HomePage() {
           
           if (response.ok) {
             const result = await response.json()
-            toast.success(`App improved! ${result.changes || 'Improvements applied'}`)
             loadApps()
             
-            // Add to chat history
-            setChatHistory(prev => [...prev, {
-              question: composerText.trim(),
-              answer: `Successfully improved ${intent.targetApp}: ${result.changes || 'Applied improvements'}`,
-              timestamp: Date.now()
-            }])
+            // Update last chat message with result
+            setChatHistory(prev => {
+              const updated = [...prev]
+              if (updated.length > 0) {
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  answer: `✓ Successfully improved ${intent.targetApp}!\n\n${result.changes || 'Improvements applied'}`
+                }
+              }
+              return updated
+            })
+            
+            // Play sound
+            try {
+              const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBR5+y/Dfk0YZGWuw6+CWUhALP5vd8sl2KQUbbs/w3I9EERR1xO/eNWceCAxyyu7agzsNBUCY3vLCcSYEHXbH8N2QQAoUXrTp66hVFApGn+DyvmwhBR1+y/Dfk0YJGmux6+CWURESPpre8sh1KAYY')
+              audio.volume = 0.3
+              audio.play().catch(() => {})
+            } catch (e) {}
           } else {
             const error = await response.json()
-            toast.error(error.error || 'Failed to improve app')
+            
+            // Update last chat message with error
+            setChatHistory(prev => {
+              const updated = [...prev]
+              if (updated.length > 0) {
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  answer: `❌ Failed to improve ${intent.targetApp}: ${error.error || 'Unknown error'}`
+                }
+              }
+              return updated
+            })
           }
         }).catch((error) => {
           setIsParsingIntent(false)
-          toast.error('Failed to improve app: ' + error.message)
+          
+          // Update last chat message with error
+          setChatHistory(prev => {
+            const updated = [...prev]
+            if (updated.length > 0) {
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                answer: `❌ Failed to improve app: ${error.message}`
+              }
+            }
+            return updated
+          })
         })
         
         return
@@ -359,11 +406,17 @@ export default function HomePage() {
       
       // If it's a question, answer immediately without confirmation
       if (intent.intent === 'question') {
+        // Add searching message to chat
+        setChatHistory(prev => [...prev, {
+          question: intent.question,
+          answer: '🔍 Searching your data...',
+          timestamp: Date.now()
+        }])
+        
         setComposerText('')
         setShowComposer(false)
+        setViewMode('chat')
         setIsParsingIntent(false)
-        
-        toast.success('Searching your data...')
         
         const questionResponse = await fetch('/api/apps/ask-question', {
           method: 'POST',
@@ -377,15 +430,18 @@ export default function HomePage() {
         if (questionResponse.ok) {
           const result = await questionResponse.json()
           
-          // Add to chat history
-          setChatHistory(prev => [...prev, {
-            question: intent.question,
-            answer: result.answer,
-            timestamp: Date.now()
-          }])
+          // Update last chat message with actual answer
+          setChatHistory(prev => {
+            const updated = [...prev]
+            if (updated.length > 0) {
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                answer: result.answer
+              }
+            }
+            return updated
+          })
           
-          // Switch to chat mode and play sound
-          setViewMode('chat')
           setHasNewMessage(true)
           
           // Play notification sound
@@ -396,16 +452,75 @@ export default function HomePage() {
           } catch (e) {}
           
           setTimeout(() => setHasNewMessage(false), 2000)
-          toast.success('Answer added to chat')
         } else {
-          toast.error('Failed to answer question')
+          // Update last chat message with error
+          setChatHistory(prev => {
+            const updated = [...prev]
+            if (updated.length > 0) {
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                answer: '❌ Failed to answer question. Please try again.'
+              }
+            }
+            return updated
+          })
         }
       } else if (!intent.needsConfirmation) {
-        // Execute immediately without confirmation
+        // Execute immediately without confirmation (for create/createMany actions)
         if (intent.intent === 'chain') {
+          // Add to chat showing what's happening
+          setChatHistory(prev => [...prev, {
+            question: composerText.trim(),
+            answer: '⚙️ Executing multiple actions...',
+            timestamp: Date.now()
+          }])
+          setComposerText('')
+          setShowComposer(false)
+          setViewMode('chat')
+          
           await executeChainedActions(intent.actions)
+          
+          // Update last message with completion
+          setChatHistory(prev => {
+            const updated = [...prev]
+            if (updated.length > 0) {
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                answer: '✓ All actions completed successfully!'
+              }
+            }
+            return updated
+          })
         } else {
+          // Add to chat
+          const actionDesc = intent.intent === 'create' 
+            ? 'Creating app...' 
+            : intent.dataAction?.action === 'createMany'
+            ? `Creating ${intent.dataAction.items?.length || 'multiple'} items...`
+            : `Creating ${intent.dataAction?.entityType}...`
+          
+          setChatHistory(prev => [...prev, {
+            question: composerText.trim(),
+            answer: `⚙️ ${actionDesc}`,
+            timestamp: Date.now()
+          }])
+          setComposerText('')
+          setShowComposer(false)
+          setViewMode('chat')
+          
           await executeSingleAction(intent)
+          
+          // Update last message
+          setChatHistory(prev => {
+            const updated = [...prev]
+            if (updated.length > 0) {
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                answer: '✓ Completed successfully!'
+              }
+            }
+            return updated
+          })
         }
         setIsParsingIntent(false)
       } else {
@@ -440,8 +555,6 @@ export default function HomePage() {
       setGeneratingApps(updatedGenerating)
       localStorage.setItem('generatingApps', JSON.stringify(updatedGenerating))
       
-      toast.success('Generating app...')
-      
       fetch('/api/apps/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -455,11 +568,37 @@ export default function HomePage() {
         localStorage.setItem('generatingApps', JSON.stringify(updated))
         
         if (response.ok) {
-          toast.success('App generated successfully!')
           loadApps()
+          
+          // Update chat history instead of toast
+          setChatHistory(prev => {
+            const lastMsg = prev[prev.length - 1]
+            if (lastMsg && lastMsg.answer.includes('Creating app')) {
+              const updated = [...prev]
+              updated[updated.length - 1] = {
+                ...lastMsg,
+                answer: `✓ Successfully created ${appName}!`
+              }
+              return updated
+            }
+            return prev
+          })
         } else {
           const error = await response.json()
-          toast.error(error.error || 'Failed to generate app')
+          
+          // Update chat with error
+          setChatHistory(prev => {
+            const lastMsg = prev[prev.length - 1]
+            if (lastMsg && lastMsg.answer.includes('Creating app')) {
+              const updated = [...prev]
+              updated[updated.length - 1] = {
+                ...lastMsg,
+                answer: `❌ Failed to generate app: ${error.error || 'Unknown error'}`
+              }
+              return updated
+            }
+            return prev
+          })
         }
       })
     } else if (action.intent === 'data_action' && action.dataAction.action === 'create') {
@@ -475,9 +614,28 @@ export default function HomePage() {
       })
       
       if (response.ok) {
-        toast.success(`Created ${dataAction.entityType}`)
+        // Update chat instead of toast
+        setChatHistory(prev => {
+          const updated = [...prev]
+          if (updated.length > 0) {
+            updated[updated.length - 1] = {
+              ...updated[updated.length - 1],
+              answer: `✓ Created ${dataAction.entityType}`
+            }
+          }
+          return updated
+        })
       } else {
-        toast.error('Failed to create')
+        setChatHistory(prev => {
+          const updated = [...prev]
+          if (updated.length > 0) {
+            updated[updated.length - 1] = {
+              ...updated[updated.length - 1],
+              answer: `❌ Failed to create ${dataAction.entityType}`
+            }
+          }
+          return updated
+        })
       }
     } else if (action.intent === 'data_action' && action.dataAction.action === 'createMany') {
       // Batch create multiple items without confirmation
@@ -485,11 +643,18 @@ export default function HomePage() {
       const items = dataAction.items || []
       
       if (items.length === 0) {
-        toast.error('No items to create')
+        setChatHistory(prev => {
+          const updated = [...prev]
+          if (updated.length > 0) {
+            updated[updated.length - 1] = {
+              ...updated[updated.length - 1],
+              answer: '❌ No items to create'
+            }
+          }
+          return updated
+        })
         return
       }
-      
-      toast.success(`Creating ${items.length} ${dataAction.entityType}(s)...`)
       
       let successCount = 0
       for (const item of items) {
@@ -511,13 +676,23 @@ export default function HomePage() {
         }
       }
       
-      if (successCount === items.length) {
-        toast.success(`Created ${successCount} ${dataAction.entityType}(s)`)
-      } else if (successCount > 0) {
-        toast.success(`Created ${successCount} of ${items.length} ${dataAction.entityType}(s)`)
-      } else {
-        toast.error('Failed to create items')
-      }
+      // Update chat with result
+      const resultMsg = successCount === items.length 
+        ? `✓ Created ${successCount} ${dataAction.entityType}(s)`
+        : successCount > 0
+        ? `⚠️ Created ${successCount} of ${items.length} ${dataAction.entityType}(s)`
+        : `❌ Failed to create ${dataAction.entityType}s`
+      
+      setChatHistory(prev => {
+        const updated = [...prev]
+        if (updated.length > 0) {
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            answer: resultMsg
+          }
+        }
+        return updated
+      })
     } else if (action.intent === 'delete') {
       // Delete app
       const appToDelete = apps.find(app => 
@@ -590,12 +765,19 @@ export default function HomePage() {
         }
       })
       
-      toast.success('Task completed!')
       loadApps()
+      
+      // Play completion sound
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBR5+y/Dfk0YZGWuw6+CWUhALP5vd8sl2KQUbbs/w3I9EERR1xO/eNWceCAxyyu7agzsNBUCY3vLCcSYEHXbH8N2QQAoUXrTp66hVFApGn+DyvmwhBR1+y/Dfk0YJGmux6+CWURESPpre8sh1KAYY')
+        audio.volume = 0.3
+        audio.play().catch(() => {})
+      } catch (e) {}
+      
       return
     }
 
-    // Add step message
+    // Add step message (no toast, only chat)
     setMultiStepExecution(prev => prev ? {
       ...prev,
       currentStep: stepNumber,
@@ -605,6 +787,8 @@ export default function HomePage() {
         timestamp: Date.now()
       }]
     } : null)
+    
+    setViewMode('chat')
 
     try {
       let stepResult: any = null
@@ -654,6 +838,7 @@ export default function HomePage() {
           if (response.ok) {
             const result = await response.json()
             stepResult = `Improved ${step.targetApp}: ${result.changes || 'Applied improvements'}`
+            loadApps() // Refresh grid after app update
           }
         }
 
@@ -682,6 +867,7 @@ export default function HomePage() {
             })
           })
           stepResult = `Created ${dataAction.entityType}`
+          if (dataAction.entityType === 'app') loadApps()
         } else if (dataAction.action === 'createMany') {
           const items = dataAction.items || []
           for (const item of items) {
@@ -695,6 +881,7 @@ export default function HomePage() {
             })
           }
           stepResult = `Created ${items.length} ${dataAction.entityType}(s)`
+          if (dataAction.entityType === 'app') loadApps()
         } else if (dataAction.action === 'deleteMany' || dataAction.action === 'deleteAll') {
           const response = await fetch('/api/entities/delete-many', {
             method: 'DELETE',
@@ -709,6 +896,7 @@ export default function HomePage() {
           if (response.ok) {
             const result = await response.json()
             stepResult = `Deleted ${result.count} ${dataAction.entityType}(s)`
+            if (dataAction.entityType === 'app') loadApps()
           }
         } else if (dataAction.action === 'updateMany') {
           const response = await fetch('/api/entities/update-many', {
@@ -725,6 +913,7 @@ export default function HomePage() {
           if (response.ok) {
             const result = await response.json()
             stepResult = `Updated ${result.count} ${dataAction.entityType}(s)`
+            if (dataAction.entityType === 'app') loadApps()
           }
         }
 
@@ -758,7 +947,6 @@ export default function HomePage() {
           timestamp: Date.now()
         }]
       } : null)
-      toast.error('Step execution failed')
     }
   }
 
@@ -783,6 +971,7 @@ export default function HomePage() {
                 data: dataAction.data
               })
             })
+            if (dataAction.entityType === 'app') loadApps()
           } else if (dataAction.action === 'createMany') {
             const items = dataAction.items || []
             for (const item of items) {
@@ -795,6 +984,7 @@ export default function HomePage() {
                 })
               })
             }
+            if (dataAction.entityType === 'app') loadApps()
           } else if (dataAction.action === 'deleteMany' || dataAction.action === 'deleteAll') {
             await fetch('/api/entities/delete-many', {
               method: 'DELETE',
@@ -805,6 +995,7 @@ export default function HomePage() {
                 soft: true
               })
             })
+            if (dataAction.entityType === 'app') loadApps()
           } else if (dataAction.action === 'updateMany') {
             await fetch('/api/entities/update-many', {
               method: 'PUT',
@@ -816,6 +1007,7 @@ export default function HomePage() {
                 soft: true
               })
             })
+            if (dataAction.entityType === 'app') loadApps()
           }
         }
       } catch (error) {

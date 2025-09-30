@@ -121,6 +121,28 @@ DESIGN REQUIREMENTS FOR ALL APPS:
 8. Input styling: Use shadcn Input component
 9. NEVER use HTML input/button - ONLY shadcn components
 
+CRITICAL LAYOUT RULES (PREVENT OVERFLOW):
+1. NEVER use min-h-screen on containers with lots of content - use max-h-screen instead
+2. ALWAYS add overflow-auto to scrollable areas: 'overflow-y-auto', 'overflow-x-hidden'
+3. For full-page apps: 'h-screen flex flex-col' with flex-1 for scrollable content
+4. ALWAYS set max-height on scrollable divs: 'max-h-[600px] overflow-y-auto'
+5. Use proper container constraints: 'max-w-7xl mx-auto'
+6. For grids that might overflow: wrap in 'overflow-auto' container
+7. NO fixed positioning outside viewport bounds
+8. Test scrolling: long lists MUST be in overflow-auto containers
+
+EXAMPLE FULL-PAGE APP (CORRECT LAYOUT):
+return React.createElement('div', { className: 'h-screen bg-background flex flex-col' },
+  React.createElement('header', { className: 'border-b p-4 flex-shrink-0' }, 
+    // Header content (fixed height)
+  ),
+  React.createElement('main', { className: 'flex-1 overflow-y-auto p-4' },
+    React.createElement('div', { className: 'max-w-7xl mx-auto' },
+      // Scrollable content here
+    )
+  )
+)
+
 BUTTON VARIANTS:
 - variant='secondary' for regular buttons (numbers, items)
 - variant='default' for primary actions (operators, submit)
