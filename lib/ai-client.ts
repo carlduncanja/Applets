@@ -518,7 +518,7 @@ Generate a complete, working React component for this application.`;
       }
     ],
     temperature: 0.7,
-    max_tokens: 4000,
+    max_tokens: 16000,
   });
 
   const content = response.choices[0].message.content;

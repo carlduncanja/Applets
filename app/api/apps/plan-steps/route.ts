@@ -43,10 +43,11 @@ Return ONLY a JSON object:
     {
       "type": "query" | "action",
       "description": "What this step does",
-      "intent": "question" | "data_action" | "improve",
+      "intent": "question" | "data_action" | "improve" | "create",
       "query": "question to ask" (for query type),
       "targetApp": "app name" (for improve type),
       "improvementPrompt": "what to improve" (for improve type),
+      "appPrompt": "full description of app to create" (for create type),
       "dataAction": {
         "action": "create" | "delete" | "update" | "createMany" | "deleteMany" | "updateMany",
         "entityType": "type of entity",
@@ -63,10 +64,11 @@ Return ONLY a JSON object:
   "nextStep": {
     "type": "query" | "action",
     "description": "User-friendly description",
-    "intent": "question" | "data_action" | "improve",
+    "intent": "question" | "data_action" | "improve" | "create",
     "query": "question" (for query),
     "targetApp": "app name" (for improve),
     "improvementPrompt": "what to improve" (for improve),
+    "appPrompt": "full description for app creation" (for create),
     "dataAction": {...} (for data_action),
     "message": "Message to show user"
   },
@@ -75,17 +77,20 @@ Return ONLY a JSON object:
 }
 
 IMPORTANT: Only use standard actions:
+- For creating apps: use "create" intent with appPrompt (detailed description of the app)
 - For app improvements: use "improve" intent with targetApp and improvementPrompt
 - For data operations: use "data_action" intent with proper dataAction object
 - Do NOT create custom actions like "updateConfig" - use the defined schema above
 
 Examples of multi-step tasks:
+- "Research X and create an app for it" → Step 1: Query (research X), Step 2: Action (create app with research)
 - "delete the 5 oldest notes" → Step 1: Query to find oldest notes, Step 2: Show list, Step 3: Delete them
 - "mark all overdue todos as urgent" → Step 1: Query overdue todos, Step 2: Update them with count
 - "show me my top 3 priority tasks and mark them done" → Step 1: Query top 3, Step 2: Show them, Step 3: Mark as done
 - "delete all notes about X" → Step 1: Query notes matching X, Step 2: Confirm count, Step 3: Delete
 
 Single-step tasks (return needsMultiStep: false):
+- "create a habit tracker app" → Direct app creation (intent: "create", appPrompt: "Create a habit tracking app...")
 - "delete all notes" → Direct action (intent: "data_action")
 - "create 5 todos" → Direct action (intent: "data_action")
 - "what do I have to do today" → Direct query (intent: "question")

@@ -99,6 +99,21 @@ export default function HomePage() {
       }
     }
 
+    // Load chat history from localStorage
+    const storedChat = localStorage.getItem('chatHistory')
+    if (storedChat) {
+      try {
+        const parsed = JSON.parse(storedChat)
+        if (Array.isArray(parsed)) {
+          setChatHistory(parsed)
+          console.log('✓ Loaded chat history:', parsed.length, 'messages')
+        }
+      } catch (e) {
+        console.error('Failed to load chat history:', e)
+        localStorage.removeItem('chatHistory')
+      }
+    }
+
     // Register schema for apps
     registerSchema({
       type: 'app',
@@ -137,6 +152,39 @@ export default function HomePage() {
     loadApiKeys()
   }, [])
 
+  // Refresh apps when page becomes visible (e.g., returning from editing an app)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('✓ Page visible - refreshing apps')
+        loadApps()
+        loadApiKeys()
+      }
+    }
+
+    const handleFocus = () => {
+      console.log('✓ Window focused - refreshing apps')
+      loadApps()
+      loadApiKeys()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
+
+  // Save chat history to localStorage whenever it changes
+  useEffect(() => {
+    if (chatHistory.length > 0) {
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory))
+      console.log('✓ Saved chat history:', chatHistory.length, 'messages')
+    }
+  }, [chatHistory])
+
   const loadApiKeys = async () => {
     try {
       const response = await fetch('/api/api-keys')
@@ -154,10 +202,13 @@ export default function HomePage() {
       setIsLoadingApps(true)
       const results = await findEntities('app', {}, { 
         orderBy: 'created_at', 
-        orderDirection: 'DESC' 
+        orderDirection: 'DESC',
+        cache: false  // Always get fresh data
       })
       setApps(results)
+      console.log('✓ Apps reloaded:', results.length, 'apps')
     } catch (error) {
+      console.error('Failed to load apps:', error)
       toast.error('Failed to load apps')
     } finally {
       setIsLoadingApps(false)
@@ -365,7 +416,9 @@ export default function HomePage() {
           
           if (response.ok) {
             const result = await response.json()
-            loadApps()
+            
+            // Refresh the apps list immediately
+            await loadApps()
             
             // Update last chat message with result
             setChatHistory(prev => {
@@ -704,9 +757,27 @@ export default function HomePage() {
         app.data.name.toLowerCase() === action.targetApp.toLowerCase()
       )
       if (appToDelete) {
-        await deleteEntity(appToDelete.id, true)
-        toast.success(`Deleted ${appToDelete.data.name}`)
-        loadApps()
+        try {
+          console.log('Deleting app:', appToDelete.data.name, appToDelete.id)
+          await deleteEntity(appToDelete.id, true)
+          
+          // Update UI immediately by removing from state
+          setApps(prev => prev.filter(a => a.id !== appToDelete.id))
+          
+          toast.success(`Deleted ${appToDelete.data.name}`)
+          
+          // Reload to ensure consistency
+          setTimeout(() => loadApps(), 100)
+        } catch (error: any) {
+          console.error('Delete error:', error)
+          toast.error('Failed to delete: ' + error.message)
+          // Reload on error to ensure UI is in sync
+          loadApps()
+        }
+      } else {
+        console.error('App not found. Looking for:', action.targetApp)
+        console.error('Available apps:', apps.map(a => a.data.name))
+        toast.error(`App "${action.targetApp}" not found`)
       }
     } else if (action.intent === 'rename') {
       // Rename app
@@ -714,16 +785,37 @@ export default function HomePage() {
         app.data.name.toLowerCase() === action.targetApp.toLowerCase()
       )
       if (appToRename) {
-        await fetch('/api/entities/update', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: appToRename.id,
-            updates: { name: action.newName }
+        try {
+          const response = await fetch('/api/entities/update', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: appToRename.id,
+              updates: { name: action.newName }
+            })
           })
-        })
-        toast.success(`Renamed to ${action.newName}`)
-        loadApps()
+          
+          if (response.ok) {
+            // Optimistically update UI
+            setApps(prev => prev.map(a => 
+              a.id === appToRename.id ? { ...a, data: { ...a.data, name: action.newName } } : a
+            ))
+            
+            toast.success(`Renamed to ${action.newName}`)
+            
+            // Reload to ensure consistency
+            setTimeout(() => loadApps(), 100)
+          } else {
+            toast.error('Failed to rename app')
+            loadApps()
+          }
+        } catch (error: any) {
+          console.error('Rename error:', error)
+          toast.error('Failed to rename: ' + error.message)
+          loadApps()
+        }
+      } else {
+        toast.error(`App "${action.targetApp}" not found`)
       }
     }
     
@@ -824,6 +916,48 @@ export default function HomePage() {
             }]
           } : null)
         }
+      } else if (step.type === 'action' && step.intent === 'create') {
+        // Create a new app
+        const lines = step.appPrompt.split('\n')
+        const appName = lines[0].length > 50 ? lines[0].substring(0, 50) : lines[0]
+        
+        setMultiStepExecution(prev => prev ? {
+          ...prev,
+          messages: [...prev.messages, {
+            role: 'system',
+            content: `🔨 Creating "${appName}" app...`,
+            timestamp: Date.now()
+          }]
+        } : null)
+        
+        const response = await fetch('/api/apps/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            appName: appName,
+            prompt: step.appPrompt
+          })
+        })
+        
+        if (response.ok) {
+          await loadApps()
+          stepResult = `Successfully created "${appName}" app`
+        } else {
+          const error = await response.json()
+          stepResult = `Failed to create app: ${error.error || 'Unknown error'}`
+        }
+        
+        if (stepResult) {
+          setMultiStepExecution(prev => prev ? {
+            ...prev,
+            stepData: [...prev.stepData, { step: stepNumber, data: stepResult }],
+            messages: [...prev.messages, {
+              role: 'system',
+              content: `✓ ${stepResult}`,
+              timestamp: Date.now()
+            }]
+          } : null)
+        }
       } else if (step.type === 'action' && step.intent === 'improve') {
         // Improve an app
         const appToImprove = apps.find(app => 
@@ -843,7 +977,9 @@ export default function HomePage() {
           if (response.ok) {
             const result = await response.json()
             stepResult = `Improved ${step.targetApp}: ${result.changes || 'Applied improvements'}`
-            loadApps() // Refresh grid after app update
+            
+            // Refresh grid after app update
+            await loadApps()
           }
         }
 
@@ -1149,25 +1285,64 @@ export default function HomePage() {
         app.data.name.toLowerCase() === action.targetApp.toLowerCase()
       )
       if (appToDelete) {
-        await deleteEntity(appToDelete.id, true)
-        toast.success(`Deleted ${appToDelete.data.name}`)
-        loadApps()
+        try {
+          console.log('Deleting app:', appToDelete.data.name, appToDelete.id)
+          await deleteEntity(appToDelete.id, true)
+          
+          // Update UI immediately by removing from state
+          setApps(prev => prev.filter(a => a.id !== appToDelete.id))
+          
+          toast.success(`Deleted ${appToDelete.data.name}`)
+          
+          // Reload to ensure consistency
+          setTimeout(() => loadApps(), 100)
+        } catch (error: any) {
+          console.error('Delete error:', error)
+          toast.error('Failed to delete: ' + error.message)
+          // Reload on error to ensure UI is in sync
+          loadApps()
+        }
+      } else {
+        console.error('App not found. Looking for:', action.targetApp)
+        console.error('Available apps:', apps.map(a => a.data.name))
+        toast.error(`App "${action.targetApp}" not found`)
       }
     } else if (action.intent === 'rename') {
       const appToRename = apps.find(app => 
         app.data.name.toLowerCase() === action.targetApp.toLowerCase()
       )
       if (appToRename) {
-        await fetch('/api/entities/update', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: appToRename.id,
-            updates: { name: action.newName }
+        try {
+          const response = await fetch('/api/entities/update', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: appToRename.id,
+              updates: { name: action.newName }
+            })
           })
-        })
-        toast.success(`Renamed to ${action.newName}`)
-        loadApps()
+          
+          if (response.ok) {
+            // Optimistically update UI
+            setApps(prev => prev.map(a => 
+              a.id === appToRename.id ? { ...a, data: { ...a.data, name: action.newName } } : a
+            ))
+            
+            toast.success(`Renamed to ${action.newName}`)
+            
+            // Reload to ensure consistency
+            setTimeout(() => loadApps(), 100)
+          } else {
+            toast.error('Failed to rename app')
+            loadApps()
+          }
+        } catch (error: any) {
+          console.error('Rename error:', error)
+          toast.error('Failed to rename: ' + error.message)
+          loadApps()
+        }
+      } else {
+        toast.error(`App "${action.targetApp}" not found`)
       }
     } else if (action.intent === 'create') {
       // Generate new app
@@ -1258,7 +1433,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen-ios bg-background flex flex-col animate-in fade-in duration-200">
-      <header className="border-b border-border bg-card">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -1305,11 +1480,29 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="flex-1 p-4 md:p-6 pb-36 overflow-auto">
+      <main className="flex-1 p-4 md:p-6 mb-50 overflow-auto">
         <div className="max-w-7xl mx-auto h-full">
           {viewMode === 'chat' ? (
             multiStepExecution?.active || multiStepExecution?.messages.length ? (
-              <div className="max-w-3xl mx-auto space-y-4">
+              <div className="max-w-3xl mx-auto space-y-4 pb-8">
+                {/* Clear history button for multi-step */}
+                {!multiStepExecution?.active && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setMultiStepExecution(null)
+                        toast.success('Conversation cleared')
+                      }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Clear Conversation
+                    </Button>
+                  </div>
+                )}
+                
                 {/* Multi-step agent conversation */}
                 {multiStepExecution?.messages.map((msg, index) => (
                   <div key={index} className="space-y-2">
@@ -1373,7 +1566,24 @@ export default function HomePage() {
                 </div>
               </div>
               ) : (
-              <div className="max-w-3xl mx-auto space-y-6">
+              <div className="max-w-3xl mx-auto space-y-6 pb-8">
+                {/* Clear history button */}
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setChatHistory([])
+                      localStorage.removeItem('chatHistory')
+                      toast.success('Chat history cleared')
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Clear History
+                  </Button>
+                </div>
+                
                 {chatHistory.map((chat, index) => (
                   <div key={index} className="space-y-3">
                     {/* Question bubble - right aligned */}
