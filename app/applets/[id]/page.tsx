@@ -6,12 +6,15 @@ import { useEntityStore } from "@/store/entity-store"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Code, Play, Loader2, Sparkles, History, RotateCcw, Save } from "lucide-react"
+import { ArrowLeft, Code, Play, Loader2, Brain, History, RotateCcw, Save } from "lucide-react"
 import { toast } from "sonner"
 import React from 'react'
 import { loadComponentFromCode, ComponentErrorBoundary } from '@/lib/component-loader'
 import { Textarea } from "@/components/ui/textarea"
 import { AppLoadingSkeleton, AppIteratingSkeleton } from "@/components/AppLoadingSkeleton"
+import dynamic from 'next/dynamic'
+
+const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,12 +34,11 @@ export default function AppletRunnerPage() {
   const { findEntityById } = useEntityStore()
   const [app, setApp] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [showCode, setShowCode] = useState(false)
   const [AppComponent, setAppComponent] = useState<React.ComponentType<any> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showIterateDialog, setShowIterateDialog] = useState(false)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
-  const [showCodeEditor, setShowCodeEditor] = useState(false)
+  const [showEditor, setShowEditor] = useState(false)
   const [iterationPrompt, setIterationPrompt] = useState('')
   const [isIterating, setIsIterating] = useState(false)
   const [editedCode, setEditedCode] = useState('')
@@ -235,11 +237,11 @@ export default function AppletRunnerPage() {
                 size="sm"
                 onClick={() => {
                   setEditedCode(app.data.code);
-                  setShowCodeEditor(true);
+                  setShowEditor(!showEditor);
                 }}
               >
                 <Code className="h-4 w-4 mr-1" />
-                Edit
+                {showEditor ? 'Preview' : 'Edit'}
               </Button>
             </div>
           </div>
@@ -249,6 +251,76 @@ export default function AppletRunnerPage() {
       <main className="flex-1 overflow-hidden relative">
         {isIterating ? (
           <AppIteratingSkeleton />
+        ) : showEditor ? (
+          <div className="h-full flex flex-col bg-background">
+            <div className="flex-1 overflow-hidden">
+              <MonacoEditor
+                height="100%"
+                defaultLanguage="javascript"
+                value={editedCode}
+                onChange={(value) => setEditedCode(value || '')}
+                theme={document.documentElement.classList.contains('dark') ? 'vs-dark' : 'light'}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 2,
+                }}
+              />
+            </div>
+            <div className="border-t border-border bg-card p-3 flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const Component = loadComponentFromCode(editedCode)
+                  setAppComponent(() => Component)
+                  setError(null)
+                  toast.success('Code updated! Click Preview to see changes.')
+                }}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Test
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditedCode(app.data.code)}
+              >
+                Reset
+              </Button>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  setIsSaving(true)
+                  try {
+                    await fetch('/api/apps/update-code', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        appId: appId,
+                        code: editedCode,
+                        saveAsNewVersion: true
+                      })
+                    })
+                    toast.success('Saved as new version!')
+                    await loadApp()
+                    setShowEditor(false)
+                  } catch (error) {
+                    toast.error('Failed to save')
+                  } finally {
+                    setIsSaving(false)
+                  }
+                }}
+                disabled={isSaving}
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Save
+              </Button>
+            </div>
+          </div>
         ) : error ? (
           <div className="flex items-center justify-center h-full p-4">
             <Card className="w-full max-w-md border-destructive">
@@ -277,21 +349,22 @@ export default function AppletRunnerPage() {
       </main>
 
       {/* Floating Action Button for AI Improvements */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className={`fixed right-6 z-50 ${showEditor ? 'bottom-24' : 'bottom-6'}`}>
         {!showIterateDialog ? (
           <Button
             size="lg"
             onClick={() => setShowIterateDialog(true)}
-            className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 p-0"
+            variant="default"
+            className="h-14 w-14 rounded-full shadow-2xl p-0"
           >
-            <Sparkles className="h-6 w-6" />
+            <Brain className="h-6 w-6" />
           </Button>
         ) : (
           <Card className="w-96 shadow-2xl">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <Brain className="h-4 w-4" />
                   Improve App
                 </CardTitle>
                 <Button
@@ -317,7 +390,8 @@ export default function AppletRunnerPage() {
               <Button
                 onClick={handleIterate}
                 disabled={!iterationPrompt.trim() || isIterating}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                variant="default"
+                className="w-full"
               >
                 {isIterating ? (
                   <>
@@ -326,7 +400,7 @@ export default function AppletRunnerPage() {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4 mr-2" />
+                    <Brain className="h-4 w-4 mr-2" />
                     Improve App
                   </>
                 )}
@@ -416,8 +490,8 @@ export default function AppletRunnerPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Code Editor Dialog */}
-      <AlertDialog open={showCodeEditor} onOpenChange={setShowCodeEditor}>
+      {/* Code Editor Dialog - Removed, now uses toggle view */}
+      <AlertDialog open={false} onOpenChange={() => {}}>
         <AlertDialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">

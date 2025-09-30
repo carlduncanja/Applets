@@ -1,8 +1,8 @@
-# Generative Application
+# AI-OS
 
-An AI-powered application generator that creates fully functional apps from natural language prompts. Built with Claude 4.5 Sonnet, Next.js, SQLite, and Tailwind CSS.
+An AI-powered operating system that creates and runs fully functional applets from natural language. Built with Claude 4.5 Sonnet, Next.js, SQLite, and Tailwind CSS.
 
-Generate complete web applications instantly - from calculators and todo lists to browsers and dashboards - all without writing a single line of code.
+Create complete applications, manage data, and interact with your applets - all through natural conversation. No code required.
 
 ## Features
 

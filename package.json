@@ -1,6 +1,6 @@
 {
-  "name": "generative-application",
-  "description": "AI-powered application generator with schema-flexible database",
+  "name": "ai-os",
+  "description": "An AI-powered operating system for building and running applets",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -19,6 +19,7 @@
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
     "next-themes": "^0.4.3",
+    "@monaco-editor/react": "^4.6.0",
     "openai": "^4.104.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

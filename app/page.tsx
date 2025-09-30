@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Sparkles, 
+  Brain,
   Plus, 
   Play, 
   Trash2,
@@ -19,7 +19,9 @@ import {
   Zap,
   FileText,
   LayoutDashboard,
-  X
+  X,
+  LayoutGrid,
+  MessageSquare
 } from "lucide-react"
 import {
   AlertDialog,
@@ -45,7 +47,9 @@ export default function HomePage() {
   const [showComposer, setShowComposer] = useState(false)
   const [pendingAction, setPendingAction] = useState<any>(null)
   const [isParsingIntent, setIsParsingIntent] = useState(false)
-  const [answerDialog, setAnswerDialog] = useState<{ question: string; answer: string } | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'chat'>('grid')
+  const [chatHistory, setChatHistory] = useState<Array<{ question: string; answer: string; timestamp: number }>>([])
+  const [hasNewMessage, setHasNewMessage] = useState(false)
 
   useEffect(() => {
     // Load generating apps from localStorage
@@ -162,10 +166,27 @@ export default function HomePage() {
         
         if (questionResponse.ok) {
           const result = await questionResponse.json()
-          setAnswerDialog({
+          
+          // Add to chat history
+          setChatHistory(prev => [...prev, {
             question: intent.question,
-            answer: result.answer
-          })
+            answer: result.answer,
+            timestamp: Date.now()
+          }])
+          
+          // Switch to chat mode and play sound
+          setViewMode('chat')
+          setHasNewMessage(true)
+          
+          // Play notification sound
+          try {
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBR5+y/Dfk0YZGWuw6+CWUhALP5vd8sl2KQUbbs/w3I9EERR1xO/eNWceCAxyyu7agzsNBUCY3vLCcSYEHXbH8N2QQAoUXrTp66hVFApGn+DyvmwhBR1+y/Dfk0YJGmux6+CWURESPpre8sh1KAYY')
+            audio.volume = 0.3
+            audio.play().catch(() => {})
+          } catch (e) {}
+          
+          setTimeout(() => setHasNewMessage(false), 2000)
+          toast.success('Answer added to chat')
         } else {
           toast.error('Failed to answer question')
         }
@@ -191,7 +212,56 @@ export default function HomePage() {
     setComposerText('')
     setShowComposer(false)
 
-    if (action.intent === 'delete') {
+    if (action.intent === 'data_action') {
+      // Execute data manipulation
+      const dataAction = action.dataAction
+      
+      toast.success('Executing...')
+      
+      // If deleting or updating, find the entity first
+      let targetEntityId = null
+      if (dataAction.action === 'delete' || dataAction.action === 'update' || dataAction.action === 'toggle') {
+        const searchResponse = await fetch('/api/entities/find', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityType: dataAction.entityType,
+            filters: {},
+            options: { limit: 10 }
+          })
+        })
+        
+        if (searchResponse.ok) {
+          const entities = await searchResponse.json()
+          // Find entity matching the query
+          const found = entities.find((e: any) => 
+            JSON.stringify(e.data).toLowerCase().includes(dataAction.query?.toLowerCase() || '')
+          )
+          if (found) {
+            targetEntityId = found.id
+          }
+        }
+      }
+      
+      const response = await fetch('/api/apps/execute-data-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: dataAction.action,
+          entityType: dataAction.entityType,
+          data: dataAction.data,
+          entityId: targetEntityId,
+          updates: dataAction.updates
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        toast.success(result.message || 'Action completed')
+      } else {
+        toast.error('Failed to execute action')
+      }
+    } else if (action.intent === 'delete') {
       const appToDelete = apps.find(app => 
         app.data.name.toLowerCase() === action.targetApp.toLowerCase()
       )
@@ -284,34 +354,100 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <Sparkles className="h-6 w-6 text-white" />
+              <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
+                <Brain className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground">Generative Application</h1>
-                <p className="text-sm text-muted-foreground">Create Anything</p>
+                <h1 className="text-xl font-bold text-foreground">AI-OS</h1>
+                <p className="text-sm text-muted-foreground">AI-powered operating system</p>
               </div>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setViewMode(viewMode === 'grid' ? 'chat' : 'grid')
+                  setHasNewMessage(false)
+                }}
+                className={`h-9 w-9 relative ${hasNewMessage && viewMode === 'grid' ? 'animate-pulse' : ''}`}
+              >
+                {viewMode === 'grid' ? (
+                  <>
+                    <MessageSquare className="h-5 w-5" />
+                    {hasNewMessage && (
+                      <span className="absolute top-1 right-1 h-2 w-2 bg-primary rounded-full animate-ping" />
+                    )}
+                  </>
+                ) : (
+                  <LayoutGrid className="h-5 w-5" />
+                )}
+              </Button>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
 
       <main className="flex-1 p-4 md:p-6 pb-36 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-4">
-          {apps.length > 0 || generatingApps.length > 0 ? (
+          {viewMode === 'chat' ? (
+            chatHistory.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <Card className="max-w-md">
+                  <CardContent className="p-8 text-center">
+                    <MessageSquare className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold mb-2">Chat Mode</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Use the composer below to chat with your apps and data
+                    </p>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p>• Ask questions about your data</p>
+                      <p>• Create, delete, or rename apps</p>
+                      <p>• Get answers from your applets</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              ) : (
+              <div className="max-w-3xl mx-auto space-y-6">
+                {chatHistory.map((chat, index) => (
+                  <div key={index} className="space-y-3">
+                    {/* Question bubble - right aligned */}
+                    <div className="flex justify-end">
+                      <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-3">
+                        <p className="text-sm">{chat.question}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Answer bubble - left aligned */}
+                    <div className="flex justify-start">
+                      <div className="max-w-[85%]">
+                        <div className="bg-muted text-foreground rounded-2xl rounded-tl-sm px-4 py-3">
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{chat.answer}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 ml-2">
+                          {new Date(chat.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : apps.length > 0 || generatingApps.length > 0 ? (
             <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {/* Generating apps (skeletons) */}
               {generatingApps.map((genApp) => (
                 <Card 
                   key={genApp.id}
-                  className="flex flex-col aspect-square border-2 border-purple-500/50 bg-gradient-to-br from-purple-500/5 to-pink-500/5 relative overflow-hidden"
+                  className="flex flex-col aspect-square border-2 border-primary/50 relative overflow-hidden"
                 >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full -mr-16 -mt-16 animate-pulse" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 animate-pulse" />
                   
                   <CardContent className="flex-1 flex flex-col items-center justify-center gap-1.5 p-3 relative z-10">
-                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center animate-pulse">
-                      <Sparkles className="h-5 w-5 md:h-6 md:w-6 text-purple-600 animate-pulse" />
+                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/20 flex items-center justify-center animate-pulse">
+                      <Brain className="h-5 w-5 md:h-6 md:w-6 text-primary animate-pulse" />
                     </div>
                     <div className="text-center">
                       <h3 className="font-semibold text-xs md:text-sm leading-tight">{genApp.name}</h3>
@@ -332,11 +468,11 @@ export default function HomePage() {
                     className="flex flex-col aspect-square cursor-pointer transition-all hover:shadow-lg hover:scale-105 active:scale-95 border-2 hover:border-primary relative overflow-hidden group"
                     onClick={() => router.push(`/applets/${app.id}`)}
                   >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform" />
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform" />
                     
                     <CardContent className="flex-1 flex flex-col items-center justify-center gap-1.5 p-3 relative z-10">
-                      <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                        <Icon className="h-5 w-5 md:h-6 md:w-6 text-purple-600" />
+                      <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Icon className="h-5 w-5 md:h-6 md:w-6 text-foreground" />
                       </div>
                       <div className="text-center">
                         <h3 className="font-semibold text-xs md:text-sm leading-tight">{app.data.name}</h3>
@@ -362,39 +498,38 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Confirmation Toast */}
-      {pendingAction && (
-        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
-          <Card className="shadow-2xl border-2 border-primary">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <p className="font-semibold text-sm mb-1">{pendingAction.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {pendingAction.intent === 'create' && 'This will generate a new app'}
-                    {pendingAction.intent === 'delete' && `This will delete ${pendingAction.targetApp}`}
-                    {pendingAction.intent === 'rename' && `Rename ${pendingAction.targetApp} to ${pendingAction.newName}`}
-                    {pendingAction.intent === 'question' && 'Search your data for an answer'}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setPendingAction(null)}
-                  >
-                    Deny
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={executeAction}
-                  >
-                    Accept
-                  </Button>
-                </div>
+      {/* Confirmation Popup */}
+      {pendingAction && viewMode === 'grid' && (
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="bg-background border-2 border-border rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-4 space-y-3">
+              <div>
+                <p className="font-semibold text-base">{pendingAction.description}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {pendingAction.intent === 'create' && 'This will generate a new app'}
+                  {pendingAction.intent === 'delete' && `This will delete ${pendingAction.targetApp}`}
+                  {pendingAction.intent === 'rename' && `Rename ${pendingAction.targetApp} to ${pendingAction.newName}`}
+                  {pendingAction.intent === 'data_action' && `This will ${pendingAction.dataAction?.action} ${pendingAction.dataAction?.entityType} data`}
+                </p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setPendingAction(null)}
+                >
+                  Deny
+                </Button>
+                <Button
+                  variant="default"
+                  className="flex-1"
+                  onClick={executeAction}
+                >
+                  Accept
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -443,25 +578,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Answer Dialog */}
-      <AlertDialog open={!!answerDialog} onOpenChange={() => setAnswerDialog(null)}>
-        <AlertDialogContent className="max-w-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              {answerDialog?.question}
-            </AlertDialogTitle>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <p className="text-base text-foreground whitespace-pre-wrap">
-              {answerDialog?.answer}
-            </p>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Close</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

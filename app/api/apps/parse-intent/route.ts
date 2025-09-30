@@ -27,26 +27,36 @@ Available apps: ${availableApps?.map((a: any) => a.name).join(', ') || 'none'}
 
 Determine if the user wants to:
 1. CREATE a new app
-2. DELETE an existing app
+2. DELETE an existing app  
 3. RENAME an existing app
 4. ASK A QUESTION about their data
+5. MANIPULATE DATA (add/remove/update data items like bookmarks, todos, notes)
 
 Return ONLY a JSON object with this structure:
 {
-  "intent": "create" | "delete" | "rename" | "question",
+  "intent": "create" | "delete" | "rename" | "question" | "data_action",
   "targetApp": "app name if applicable",
   "newName": "new name if renaming",
   "description": "what the user wants to do in simple terms",
   "appPrompt": "full prompt for app generation if creating",
-  "question": "the user's question if asking"
+  "question": "the user's question if asking",
+  "dataAction": {
+    "action": "create" | "delete" | "update" | "toggle",
+    "entityType": "bookmark" | "todo" | "note" | "task" | etc,
+    "data": { object for creating },
+    "query": "search term for finding item to modify",
+    "updates": { fields to update }
+  }
 }
 
 Examples:
 User: "delete calculator" → {"intent": "delete", "targetApp": "Calculator", "description": "Delete the Calculator app"}
-User: "rename todo to my tasks" → {"intent": "rename", "targetApp": "Todo", "newName": "My Tasks", "description": "Rename Todo app to My Tasks"}
 User: "create a weather app" → {"intent": "create", "appPrompt": "create a weather app", "description": "Create a new weather app"}
 User: "what do I have to do today" → {"intent": "question", "question": "what do I have to do today", "description": "Answer question about tasks"}
-User: "show me my todos" → {"intent": "question", "question": "show me my todos", "description": "List todo items"}`;
+User: "add bookmark to google.com" → {"intent": "data_action", "description": "Add bookmark to google.com", "dataAction": {"action": "create", "entityType": "bookmark", "data": {"url": "https://google.com", "title": "Google"}}}
+User: "remove the google bookmark" → {"intent": "data_action", "description": "Remove Google bookmark", "dataAction": {"action": "delete", "entityType": "bookmark", "query": "google"}}
+User: "mark first task as done" → {"intent": "data_action", "description": "Mark task as complete", "dataAction": {"action": "toggle", "entityType": "todo", "query": "first"}}
+User: "add a note: buy milk" → {"intent": "data_action", "description": "Add note", "dataAction": {"action": "create", "entityType": "note", "data": {"text": "buy milk"}}}`;
 
     const response = await client.chat.completions.create({
       model: 'claude-sonnet-4-5-20250929',

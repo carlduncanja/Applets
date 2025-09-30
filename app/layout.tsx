@@ -8,9 +8,12 @@ import { Toaster } from "sonner"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Generative Application",
-  description: "Build Applets with AI - Schema-flexible database and instant app generation",
+  title: "AI-OS",
+  description: "An AI-powered operating system for building and running applets",
   generator: "Cursor",
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

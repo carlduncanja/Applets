@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Loader2, Sparkles } from "lucide-react"
+import { Loader2, Brain } from "lucide-react"
 
 export function AppLoadingSkeleton({ message = "Loading app..." }: { message?: string }) {
   return (
@@ -9,48 +9,42 @@ export function AppLoadingSkeleton({ message = "Loading app..." }: { message?: s
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-4">
           <div className="flex items-center justify-center">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center animate-pulse">
-              <Sparkles className="h-8 w-8 text-purple-600 animate-pulse" />
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+              <Brain className="h-8 w-8 text-primary animate-pulse" />
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <p className="text-lg font-semibold text-foreground">{message}</p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              AI is crafting your improvements...
-            </p>
           </div>
 
           {/* Animated skeleton bars */}
           <div className="space-y-3">
             <div className="h-3 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-purple-500/50 to-pink-500/50 animate-shimmer" 
+              <div className="h-full bg-primary/50 animate-shimmer" 
                    style={{ 
-                     width: '100%',
+                     width: '60%',
                      animation: 'shimmer 2s infinite',
-                     backgroundSize: '200% 100%'
                    }} 
               />
             </div>
             <div className="h-3 bg-muted rounded-full overflow-hidden w-3/4">
-              <div className="h-full bg-gradient-to-r from-purple-500/50 to-pink-500/50 animate-shimmer"
+              <div className="h-full bg-primary/50 animate-shimmer"
                    style={{ 
-                     width: '100%',
+                     width: '60%',
                      animation: 'shimmer 2s infinite 0.2s',
-                     backgroundSize: '200% 100%'
                    }}
               />
             </div>
             <div className="h-3 bg-muted rounded-full overflow-hidden w-5/6">
-              <div className="h-full bg-gradient-to-r from-purple-500/50 to-pink-500/50 animate-shimmer"
+              <div className="h-full bg-primary/50 animate-shimmer"
                    style={{ 
-                     width: '100%',
+                     width: '60%',
                      animation: 'shimmer 2s infinite 0.4s',
-                     backgroundSize: '200% 100%'
                    }}
               />
             </div>
@@ -61,7 +55,7 @@ export function AppLoadingSkeleton({ message = "Loading app..." }: { message?: s
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="h-2 w-2 rounded-full bg-purple-600 animate-bounce"
+                className="h-2 w-2 rounded-full bg-primary animate-bounce"
                 style={{ animationDelay: `${i * 0.15}s` }}
               />
             ))}
@@ -76,20 +70,14 @@ export function AppLoadingSkeleton({ message = "Loading app..." }: { message?: s
       <style jsx>{`
         @keyframes shimmer {
           0% {
-            background-position: -200% 0;
+            transform: translateX(-100%);
           }
           100% {
-            background-position: 200% 0;
+            transform: translateX(400%);
           }
         }
         .animate-shimmer {
           animation: shimmer 2s infinite;
-          background: linear-gradient(
-            90deg,
-            rgba(168, 85, 247, 0.5) 0%,
-            rgba(236, 72, 153, 0.5) 50%,
-            rgba(168, 85, 247, 0.5) 100%
-          );
         }
       `}</style>
     </div>
@@ -99,14 +87,14 @@ export function AppLoadingSkeleton({ message = "Loading app..." }: { message?: s
 export function AppIteratingSkeleton() {
   return (
     <div className="h-full w-full flex items-center justify-center p-8 bg-background/95 backdrop-blur-sm">
-      <Card className="w-full max-w-lg shadow-2xl border-2 border-purple-500/20">
+      <Card className="w-full max-w-lg shadow-2xl border-2 border-border">
         <CardContent className="p-8 space-y-6">
           <div className="flex items-center justify-center">
             <div className="relative">
-              <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center animate-pulse">
-                <Sparkles className="h-10 w-10 text-white" />
+              <div className="h-20 w-20 rounded-full bg-primary flex items-center justify-center animate-pulse">
+                <Brain className="h-10 w-10 text-primary-foreground" />
               </div>
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 animate-ping opacity-20" />
+              <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-20" />
             </div>
           </div>
 
@@ -126,11 +114,10 @@ export function AppIteratingSkeleton() {
               <div key={i} className="space-y-1">
                 <div className="h-2 bg-muted rounded-full overflow-hidden" style={{ width: bar.width }}>
                   <div 
-                    className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500"
+                    className="h-full bg-primary"
                     style={{ 
-                      width: '100%',
+                      width: '60%',
                       animation: `shimmer 2s infinite ${bar.delay}s`,
-                      backgroundSize: '200% 100%'
                     }}
                   />
                 </div>
@@ -143,7 +130,7 @@ export function AppIteratingSkeleton() {
             {[0, 1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600"
+                className="h-1.5 w-1.5 rounded-full bg-primary"
                 style={{
                   animation: `bounce 1.4s infinite ease-in-out`,
                   animationDelay: `${i * 0.16}s`
@@ -153,7 +140,7 @@ export function AppIteratingSkeleton() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground pt-2">
-            Please wait while we craft your improvements
+            This usually takes 10-30 seconds
           </p>
         </CardContent>
       </Card>
