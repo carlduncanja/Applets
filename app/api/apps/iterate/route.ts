@@ -57,6 +57,8 @@ CRITICAL REQUIREMENTS:
 - The code must be executable without any transpilation
 - PREVENT OVERFLOW: Use h-screen flex flex-col for full-page apps, overflow-auto for scrollable areas
 - NEVER let content extend beyond viewport - always add max-height and overflow constraints
+- **NEVER use emojis** (❌ 🎉 ✅ 📝 etc.) - use text or Lucide icons only
+- Follow v0-style minimal design: clean, professional, generous whitespace
 
 Current component code:
 \`\`\`javascript

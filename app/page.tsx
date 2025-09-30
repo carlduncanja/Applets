@@ -525,17 +525,7 @@ export default function HomePage() {
           
           await executeSingleAction(intent)
           
-          // Update last message
-          setChatHistory(prev => {
-            const updated = [...prev]
-            if (updated.length > 0) {
-              updated[updated.length - 1] = {
-                ...updated[updated.length - 1],
-                answer: '✓ Completed successfully!'
-              }
-            }
-            return updated
-          })
+          // Note: executeSingleAction updates the chat history itself with the result
         }
         setIsParsingIntent(false)
       } else {
@@ -1275,7 +1265,7 @@ export default function HomePage() {
               <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
                 <Brain className="h-6 w-6 text-primary-foreground" />
               </div>
-              <div>
+              <div className="hidden md:block">
                 <h1 className="text-xl font-bold text-foreground">AI-OS</h1>
                 <p className="text-sm text-muted-foreground">AI-powered operating system</p>
               </div>
@@ -1600,7 +1590,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2 p-3">
                 <Textarea
                   ref={textareaRef}
-                  placeholder="What do you want to do? (Type @ to mention apps)"
+                  placeholder="What do you want to do?"
                   value={composerText}
                   onChange={(e) => handleComposerTextChange(e.target.value)}
                   onFocus={() => setShowComposer(true)}

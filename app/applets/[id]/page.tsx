@@ -46,6 +46,7 @@ export default function AppletRunnerPage() {
   const [isReady, setIsReady] = useState(false)
   const [missingApiKeys, setMissingApiKeys] = useState<string[]>([])
   const [showApiKeyError, setShowApiKeyError] = useState(false)
+  const [isFixingError, setIsFixingError] = useState(false)
 
   useEffect(() => {
     loadApp()
@@ -238,6 +239,38 @@ export default function AppletRunnerPage() {
     }
   }
 
+  const handleFixError = async () => {
+    if (!error) return
+    
+    setIsFixingError(true)
+    toast.info('Analyzing and fixing error...')
+    
+    try {
+      const response = await fetch('/api/apps/iterate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appId: appId,
+          iterationPrompt: `Fix this error: ${error}. Review the code carefully and fix any syntax errors, missing parentheses, brackets, or other issues that would cause this error.`
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fix error')
+      }
+
+      toast.success('Fixed! Reloading app...')
+      
+      // Reload the app
+      await loadApp()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to fix error')
+    } finally {
+      setIsFixingError(false)
+    }
+  }
+
   if (isLoading || !app || !isReady) {
     return null
   }
@@ -409,12 +442,47 @@ export default function AppletRunnerPage() {
         ) : error ? (
           <div className="flex items-center justify-center h-full p-4">
             <Card className="w-full max-w-md border-destructive">
-              <CardContent className="p-6">
+              <CardHeader>
+                <CardTitle className="text-destructive flex items-center gap-2">
+                  <X className="h-5 w-5" />
+                  Error Loading Component
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="text-sm text-destructive">
-                  <p className="font-semibold mb-2">Error loading component:</p>
-                  <pre className="bg-destructive/10 p-3 rounded text-xs overflow-auto">
+                  <pre className="bg-destructive/10 p-3 rounded text-xs overflow-auto max-h-40">
                     {error}
                   </pre>
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <Button
+                    onClick={handleFixError}
+                    disabled={isFixingError}
+                    className="w-full gap-2"
+                    variant="default"
+                  >
+                    {isFixingError ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Fixing with AI...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-4 w-4" />
+                        Fix with AI
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={() => setShowEditor(true)}
+                    variant="outline"
+                    className="w-full gap-2"
+                  >
+                    <Code className="h-4 w-4" />
+                    Edit Code Manually
+                  </Button>
                 </div>
               </CardContent>
             </Card>

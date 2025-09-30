@@ -97,6 +97,8 @@ CRITICAL RULES:
 6. MANDATORY: Support light AND dark modes with theme colors
 7. NEVER use hardcoded colors (no slate-500, blue-500, gray-700, etc.)
 8. Create polished, professional Apple-style interfaces
+9. **NEVER use emojis** (❌ 🎉 ✅ 📝 etc.) - use Lucide icons or text only
+10. Keep UI clean, minimal, and professional
 
 STYLING FOR LIGHT/DARK MODE (MANDATORY):
 NEVER use hardcoded colors like bg-black, bg-white, bg-gray-700, text-black, text-white
@@ -110,16 +112,33 @@ ALWAYS use theme-aware classes:
 - Borders: 'border border-border'
 - Accent: 'bg-accent text-accent-foreground'
 
-DESIGN REQUIREMENTS FOR ALL APPS:
-1. Wrap in Card: React.createElement(Card, { className: 'w-full max-w-md shadow-2xl' })
-2. Add CardHeader with title
-3. Use CardContent for main content
-4. Round buttons: 'rounded-full' or 'rounded-xl'
-5. Generous padding: 'p-8', 'px-6 py-4'
-6. Shadows: 'shadow-lg', 'shadow-2xl'
-7. Centered layout: 'flex items-center justify-center min-h-screen bg-background'
-8. Input styling: Use shadcn Input component
-9. NEVER use HTML input/button - ONLY shadcn components
+V0-STYLE DESIGN PRINCIPLES (MANDATORY):
+1. **Minimal & Clean**: Remove unnecessary visual elements, focus on content
+2. **Generous Whitespace**: Use ample spacing (space-y-6, gap-6, p-6) for breathing room
+3. **Subtle Borders**: Use 'border' sparingly, prefer 'divide-y' for lists
+4. **Refined Typography**: 
+   - Titles: 'text-2xl font-semibold' or 'text-3xl font-bold'
+   - Body: 'text-sm' or 'text-base'
+   - Muted text: 'text-muted-foreground text-sm'
+5. **Smart Card Usage**: Don't overuse Cards - use simple divs with borders when appropriate
+6. **Modern Buttons**: 
+   - Primary: variant='default' with 'gap-2' for icons
+   - Secondary: variant='ghost' or 'outline'
+   - Sizes: Prefer 'default' or 'sm' over large
+7. **Refined Shadows**: Use 'shadow-sm' or no shadow instead of heavy shadows
+8. **Clean Inputs**: Default shadcn Input with 'focus:ring-2 focus:ring-ring'
+9. **Smart Layouts**: 
+   - Use 'divide-y divide-border' for list items instead of individual borders
+   - Grid: 'grid gap-4' with responsive cols
+   - Flex: 'flex items-center justify-between' for headers
+10. **Smooth Interactions**: Add 'transition-colors' and hover states
+
+LAYOUT PATTERNS (V0-STYLE):
+- Simple List: 'space-y-3' with 'p-3 rounded-lg hover:bg-accent transition-colors'
+- Grid Cards: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+- Form Fields: 'space-y-4' with Label above Input
+- Action Buttons: 'flex gap-2' with clear hierarchy (primary + secondary)
+- Headers: 'flex items-center justify-between mb-6' with title + actions
 
 CRITICAL LAYOUT RULES (PREVENT OVERFLOW):
 1. NEVER use min-h-screen on containers with lots of content - use max-h-screen instead
@@ -143,11 +162,13 @@ return React.createElement('div', { className: 'h-screen bg-background flex flex
   )
 )
 
-BUTTON VARIANTS:
-- variant='secondary' for regular buttons (numbers, items)
-- variant='default' for primary actions (operators, submit)
-- variant='outline' for secondary actions
-- variant='destructive' for delete
+BUTTON DESIGN (V0-STYLE):
+- Primary action: variant='default', size='default', 'gap-2' for icons
+- Secondary action: variant='outline' or 'ghost'
+- Destructive: variant='destructive', always with confirmation
+- Icon-only: variant='ghost', size='icon', 'h-9 w-9'
+- Groups: Use 'flex gap-2' with consistent sizing
+- NEVER use 'rounded-full' unless specifically needed - default rounded is cleaner
 - Size: 'h-16' to 'h-20' for touch-friendly
 - Font: 'text-2xl' or 'text-3xl' for large buttons
 
@@ -275,11 +296,36 @@ API KEY MANAGEMENT (BUILT-IN):
 Your apps can securely retrieve API keys for external services:
 
 const weatherApiKey = await getApiKey('openweather'); // Get OpenWeather API key
-const giphyKey = await getApiKey('giphy'); // Get Giphy API key
+const resendKey = await getApiKey('resend'); // Get Resend API key for emails
+const openaiKey = await getApiKey('openai'); // Get OpenAI API key
 
-Common API keys: 'openweather', 'giphy', 'newsapi', 'tmdb', 'spotify', 'youtube'
+Common API keys: 'resend', 'openai', 'openweather', 'giphy', 'newsapi', 'stripe', 'twilio'
 
-If an API key is needed but not set, show a friendly message asking user to configure it.
+If an API key is needed but not set, show a friendly message asking user to configure it in Settings.
+
+EXAMPLE - Sending emails with Resend:
+const resendKey = await getApiKey('resend');
+if (!resendKey) {
+  return React.createElement('div', { className: 'p-6 text-center' },
+    React.createElement('p', { className: 'text-sm text-muted-foreground' }, 
+      'Please add your Resend API key in Settings to send emails'
+    )
+  );
+}
+
+fetch('https://api.resend.com/emails', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + resendKey,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    from: 'onboarding@resend.dev',
+    to: email,
+    subject: subject,
+    html: htmlContent
+  })
+}).then(r => r.json())
 
 UTILITY ENDPOINT (BUILT-IN):
 Your apps have access to a universal utility endpoint at /api/util for external operations:
@@ -484,11 +530,25 @@ Generate a complete, working React component for this application.`;
   // Parse the JSON response
   try {
     // Remove any markdown code fences if present
-    const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    let cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    // Try to extract JSON from the response if it's wrapped in text
+    const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanContent = jsonMatch[0];
+    }
+    
     const parsed = JSON.parse(cleanContent);
+    
+    // Validate the parsed object has required fields
+    if (!parsed.name || !parsed.code || !parsed.description) {
+      throw new Error('Missing required fields in generated app');
+    }
+    
     return parsed as GeneratedApp;
   } catch (error) {
     console.error('Failed to parse AI response:', content);
-    throw new Error('Failed to parse AI-generated application');
+    console.error('Parse error:', error);
+    throw new Error('Failed to parse AI-generated application. Please try again.');
   }
 }

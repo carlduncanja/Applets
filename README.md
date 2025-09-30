@@ -213,3 +213,5 @@ Optimized SQLite configuration:
 ## License
 
 MIT
+# PWA Scripts
+generate-icons: node scripts/generate-pwa-icons.js

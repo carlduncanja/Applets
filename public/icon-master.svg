@@ -1,0 +1,32 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with rounded corners -->
+  <rect width="1024" height="1024" fill="#000000" rx="200"/>
+  
+  <!-- Brain Icon - centered and scaled -->
+  <g transform="translate(256, 256)">
+    <!-- Main brain outline -->
+    <path d="M256 100 C148 100, 90 160, 90 256 C90 352, 148 412, 256 412 C256 464, 202 516, 256 516 C310 516, 310 464, 310 412 C418 412, 476 352, 476 256 C476 160, 418 100, 310 100 C310 48, 256 48, 256 100 Z" 
+          fill="none" stroke="#ffffff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Left hemisphere details -->
+    <path d="M170 200 Q212 256, 170 312" fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round"/>
+    <path d="M148 256 Q170 276, 148 300" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round"/>
+    <path d="M190 230 Q210 256, 190 282" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+    
+    <!-- Right hemisphere details -->
+    <path d="M342 200 Q384 256, 342 312" fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round"/>
+    <path d="M364 256 Q386 276, 364 300" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round"/>
+    <path d="M322 230 Q342 256, 322 282" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+    
+    <!-- Center connection -->
+    <circle cx="256" cy="256" r="32" fill="#ffffff"/>
+    <path d="M220 256 L292 256" stroke="#000000" stroke-width="12" stroke-linecap="round"/>
+    <path d="M256 220 L256 292" stroke="#000000" stroke-width="12" stroke-linecap="round"/>
+    
+    <!-- Neural connections -->
+    <circle cx="256" cy="180" r="12" fill="#ffffff"/>
+    <circle cx="256" cy="332" r="12" fill="#ffffff"/>
+    <circle cx="180" cy="256" r="12" fill="#ffffff"/>
+    <circle cx="332" cy="256" r="12" fill="#ffffff"/>
+  </g>
+</svg>
