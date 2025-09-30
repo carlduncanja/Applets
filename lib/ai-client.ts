@@ -159,6 +159,109 @@ const Calculator = () => {
 
 This creates a proper grid calculator that works in both light and dark mode!
 
+DATABASE INTEGRATION (BUILT-IN):
+Your apps have access to a schema-flexible entity database. Use these API endpoints for persistence:
+
+1. CREATE ENTITY:
+fetch('/api/entities', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    entityType: 'todo',
+    data: { text: 'Buy milk', completed: false }
+  })
+}).then(res => res.json())
+
+2. FIND ENTITIES:
+fetch('/api/entities/find', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    entityType: 'todo',
+    filters: { completed: false },
+    options: { orderBy: 'created_at', orderDirection: 'DESC' }
+  })
+}).then(res => res.json())
+
+3. UPDATE ENTITY:
+fetch('/api/entities/update', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    id: entityId,
+    updates: { completed: true }
+  })
+}).then(res => res.json())
+
+4. DELETE ENTITY:
+fetch('/api/entities/delete', {
+  method: 'DELETE',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    id: entityId,
+    soft: true
+  })
+}).then(res => res.json())
+
+ENTITY STRUCTURE:
+Each entity has: { id, entity_type, data, version, created_at, updated_at }
+The "data" field contains your custom object
+
+EXAMPLE TODO APP WITH DATABASE:
+const TodoList = () => {
+  const [todos, setTodos] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Load todos from database on mount
+    fetch('/api/entities/find', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entityType: 'todo', filters: {} })
+    })
+      .then(res => res.json())
+      .then(data => {
+        setTodos(data);
+        setLoading(false);
+      });
+  }, []);
+
+  const addTodo = async () => {
+    const response = await fetch('/api/entities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entityType: 'todo',
+        data: { text: input, completed: false }
+      })
+    });
+    const newTodo = await response.json();
+    setTodos([...todos, newTodo]);
+    setInput('');
+  };
+
+  const toggleTodo = async (todo) => {
+    await fetch('/api/entities/update', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: todo.id,
+        updates: { completed: !todo.data.completed }
+      })
+    });
+    // Reload todos
+    const res = await fetch('/api/entities/find', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entityType: 'todo', filters: {} })
+    });
+    setTodos(await res.json());
+  };
+
+  // Render with React.createElement...
+};
+
 IMPORTANT:
 - Return valid JSON only (no markdown, no code fences)
 - MANDATORY: Use shadcn Button component, not HTML button
@@ -167,7 +270,9 @@ IMPORTANT:
 - Wrap all apps in Card component
 - grid grid-cols-4 gap-2 creates perfect 4-column layout
 - DO NOT create helper components inside
-- Apps must look good in BOTH light and dark mode`;
+- Apps must look good in BOTH light and dark mode
+- Use database API for persistence when user needs data to persist
+- Use entityType that matches the app (todo, note, contact, product, etc.)`;
 
   const userPrompt = `Create a web application component with the following requirements:
 
