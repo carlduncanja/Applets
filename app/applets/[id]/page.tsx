@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import React from 'react'
 import { loadComponentFromCode, ComponentErrorBoundary } from '@/lib/component-loader'
 import { Textarea } from "@/components/ui/textarea"
+import { AppLoadingSkeleton, AppIteratingSkeleton } from "@/components/AppLoadingSkeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -192,13 +193,10 @@ export default function AppletRunnerPage() {
     }
   }
 
-  if (isLoading || isIterating) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen-ios bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
-          <p className="text-muted-foreground">{isIterating ? 'Improving app with AI...' : 'Loading app...'}</p>
-        </div>
+      <div className="h-screen bg-background">
+        <AppLoadingSkeleton message="Loading app..." />
       </div>
     )
   }
@@ -206,91 +204,53 @@ export default function AppletRunnerPage() {
   if (!app) return null
 
   return (
-    <div className="min-h-screen-ios bg-background flex flex-col">
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+    <div className="h-screen overflow-hidden bg-background flex flex-col relative">
+      <header className="border-b border-border bg-card z-50 flex-shrink-0">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
-                size="icon"
                 onClick={() => router.push('/applets')}
+                className="gap-2"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4" />
+                Back
               </Button>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">{app.data.name}</h1>
-                <p className="text-sm text-muted-foreground">{app.data.description}</p>
+              <div className="border-l border-border pl-3">
+                <h1 className="text-lg font-semibold text-foreground">{app.data.name}</h1>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  setIsIterating(true);
-                  try {
-                    const response = await fetch('/api/apps/regenerate', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ appId })
-                    });
-                    if (response.ok) {
-                      toast.success('App regenerated!');
-                      await loadApp();
-                    }
-                  } catch (error) {
-                    toast.error('Failed to regenerate');
-                  } finally {
-                    setIsIterating(false);
-                  }
-                }}
-                className="border-orange-500/50 hover:bg-orange-500/10"
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Regenerate
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowIterateDialog(true)}
-                className="border-purple-500/50 hover:bg-purple-500/10"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Improve
-              </Button>
-              <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setShowVersionHistory(true)}
               >
-                <History className="h-4 w-4 mr-2" />
                 v{app.data.version || 1}
               </Button>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => {
                   setEditedCode(app.data.code);
                   setShowCodeEditor(true);
                 }}
-                className="border-blue-500/50 hover:bg-blue-500/10"
               >
-                <Code className="h-4 w-4 mr-2" />
-                Edit Code
+                <Code className="h-4 w-4 mr-1" />
+                Edit
               </Button>
-              <Badge variant="secondary" className="capitalize">
-                {app.data.componentType}
-              </Badge>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 p-4 md:p-6 overflow-auto">
-        <div className="max-w-7xl mx-auto space-y-4">
-          {error && (
-            <Card className="border-destructive">
+      <main className="flex-1 overflow-hidden relative">
+        {isIterating ? (
+          <AppIteratingSkeleton />
+        ) : error ? (
+          <div className="flex items-center justify-center h-full p-4">
+            <Card className="w-full max-w-md border-destructive">
               <CardContent className="p-6">
                 <div className="text-sm text-destructive">
                   <p className="font-semibold mb-2">Error loading component:</p>
@@ -300,145 +260,81 @@ export default function AppletRunnerPage() {
                 </div>
               </CardContent>
             </Card>
-          )}
-
-          {showCode && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Source Code</CardTitle>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditedCode(app.data.code);
-                      setShowCodeEditor(true);
-                      setShowCode(false);
-                    }}
-                  >
-                    <Code className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <pre className="text-sm bg-muted p-4 rounded-md overflow-auto max-h-96 font-mono">
-                  {app.data.code}
-                </pre>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card className="min-h-[500px]">
-            <CardContent className="p-6">
-              {AppComponent && !error ? (
-                <ComponentErrorBoundary>
-                  <div className="w-full">
-                    <AppComponent />
-                  </div>
-                </ComponentErrorBoundary>
-              ) : !error ? (
-                <div className="flex items-center justify-center min-h-[400px]">
-                  <div className="text-center space-y-4">
-                    <Play className="h-12 w-12 text-muted-foreground mx-auto" />
-                    <p className="text-muted-foreground">Component not loaded</p>
-                  </div>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">App Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Type</p>
-                  <p className="font-medium capitalize">{app.data.componentType}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Version</p>
-                  <p className="font-medium">v{app.data.version}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Executions</p>
-                  <p className="font-medium">{app.data.executions || 0} times</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Created</p>
-                  <p className="font-medium">{new Date(app.created_at).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              {app.data.prompt && (
-                <div className="pt-3 border-t">
-                  <p className="text-sm text-muted-foreground mb-2">Original Prompt:</p>
-                  <p className="text-sm bg-muted p-3 rounded">
-                    {app.data.prompt}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-
-      {/* Iterate Dialog */}
-      <AlertDialog open={showIterateDialog} onOpenChange={setShowIterateDialog}>
-        <AlertDialogContent className="max-w-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              Improve App with AI
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Describe the changes or improvements you want to make to this app.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <Textarea
-              placeholder="Example: Add a dark mode toggle, change the button colors to blue, add sound effects, improve the layout..."
-              value={iterationPrompt}
-              onChange={(e) => setIterationPrompt(e.target.value)}
-              className="min-h-32"
-            />
-            
-            <div className="bg-muted p-3 rounded-lg text-sm text-muted-foreground">
-              <p className="font-semibold mb-1">💡 Tips:</p>
-              <ul className="space-y-1 text-xs">
-                <li>• Be specific about what you want to change</li>
-                <li>• The AI will maintain your app's functionality</li>
-                <li>• Previous versions are saved automatically</li>
-                <li>• You can rollback if you don't like the changes</li>
-              </ul>
+          </div>
+        ) : AppComponent ? (
+          <ComponentErrorBoundary>
+            <AppComponent />
+          </ComponentErrorBoundary>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center space-y-4">
+              <Play className="h-12 w-12 text-muted-foreground mx-auto" />
+              <p className="text-muted-foreground">Component not loaded</p>
             </div>
           </div>
+        )}
+      </main>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button
-              onClick={handleIterate}
-              disabled={!iterationPrompt.trim() || isIterating}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-            >
-              {isIterating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Improving...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
+      {/* Floating Action Button for AI Improvements */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {!showIterateDialog ? (
+          <Button
+            size="lg"
+            onClick={() => setShowIterateDialog(true)}
+            className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 p-0"
+          >
+            <Sparkles className="h-6 w-6" />
+          </Button>
+        ) : (
+          <Card className="w-96 shadow-2xl">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
                   Improve App
-                </>
-              )}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowIterateDialog(false);
+                    setIterationPrompt('');
+                  }}
+                >
+                  ×
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                placeholder="Describe improvements... (e.g., Add dark mode toggle, change colors to blue, add sound effects)"
+                value={iterationPrompt}
+                onChange={(e) => setIterationPrompt(e.target.value)}
+                className="min-h-24 resize-none"
+                autoFocus
+              />
+              <Button
+                onClick={handleIterate}
+                disabled={!iterationPrompt.trim() || isIterating}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                {isIterating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Improving...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Improve App
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
 
       {/* Version History Dialog */}
       <AlertDialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
