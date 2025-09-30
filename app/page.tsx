@@ -303,7 +303,11 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: composerText.trim(),
-          availableApps: apps.map(a => ({ name: a.data.name, id: a.id })),
+          availableApps: apps.map(a => ({ 
+            name: a.data.name, 
+            id: a.id,
+            schemas: a.data.schemas || []
+          })),
           availableApiKeys: apiKeys.map(k => k.data.name),
           chatHistory: allMessages,
           currentStep: null,
@@ -351,7 +355,11 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: composerText.trim(),
-          availableApps: apps.map(a => ({ name: a.data.name, id: a.id })),
+          availableApps: apps.map(a => ({ 
+            name: a.data.name, 
+            id: a.id,
+            schemas: a.data.schemas || []
+          })),
           availableApiKeys: apiKeys.map(k => k.data.name),
           chatHistory: allMessages
         })

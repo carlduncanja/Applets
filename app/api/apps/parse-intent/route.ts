@@ -27,13 +27,27 @@ export async function POST(request: NextRequest) {
         ).join('\n')}`
       : '';
     
+    // Format schemas for AI
+    const schemasInfo = availableApps && availableApps.length > 0
+      ? '\n\nKnown Entity Schemas from Apps:\n' + availableApps
+          .filter((app: any) => app.schemas && app.schemas.length > 0)
+          .map((app: any) => 
+            `${app.name} uses:\n` + app.schemas.map((schema: any) => 
+              `  - ${schema.entityType}: { ${schema.fields.join(', ')} }`
+            ).join('\n')
+          )
+          .join('\n')
+      : '';
+    
     const systemPrompt = `You are an intent parser for AI-OS. Parse the user's request and determine their intent.
 
 Available apps: ${availableApps?.map((a: any) => a.name).join(', ') || 'none'}
-Available API keys: ${availableApiKeys?.join(', ') || 'none configured'}${conversationContext}
+Available API keys: ${availableApiKeys?.join(', ') || 'none configured'}${schemasInfo}${conversationContext}
 
 If user wants to create an app that requires an API key not in the list, inform them in the description.
 Use previous conversation context to understand references like "it", "that one", "the same", etc.
+
+**IMPORTANT**: When creating/updating/filtering data, ALWAYS use the exact field names from the schemas above. If a schema exists for an entity type, follow it strictly.
 
 Determine if the user wants to:
 1. OPEN an app

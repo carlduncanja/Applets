@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAIClient } from '@/lib/ai-client';
 import { getEntityManager } from '@/lib/entity-manager';
+import { extractSchemasFromCode } from '@/lib/schema-extractor';
 
 export async function POST(request: NextRequest) {
   try {
@@ -108,10 +109,14 @@ Return a JSON object with this exact structure:
       throw new Error('Failed to parse AI-generated improvement');
     }
 
+    // Extract schema information from the improved code
+    const schemas = extractSchemasFromCode(improved.code);
+
     // Update the app with new version
     const updatedApp = em.update(appId, {
       code: improved.code,
       description: improved.description,
+      schemas: schemas, // Update schemas
       version: currentVersion + 1,
       versionHistory: versionHistory,
       lastIteration: {
