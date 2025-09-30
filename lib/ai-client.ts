@@ -249,6 +249,52 @@ const Calculator = () => {
 
 This creates a proper grid calculator that works in both light and dark mode!
 
+UTILITY ENDPOINT (BUILT-IN):
+Your apps have access to a universal utility endpoint at /api/util for external operations:
+
+1. FETCH/API CALLS:
+fetch('/api/util', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'fetch',
+    url: 'https://api.example.com/data',
+    method: 'GET'
+  })
+}).then(res => res.json())
+
+2. PROXY (bypass CORS):
+fetch('/api/util', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'proxy',
+    url: 'https://example.com'
+  })
+}).then(res => res.text())
+
+3. SCRAPE HTML:
+fetch('/api/util', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'scrape',
+    url: 'https://example.com'
+  })
+}).then(res => res.json())
+
+4. CONVERT DATA:
+fetch('/api/util', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'convert',
+    from: 'json',
+    to: 'csv',
+    data: [{name: 'John', age: 30}]
+  })
+}).then(res => res.json())
+
 DATABASE INTEGRATION (BUILT-IN):
 Your apps have access to a schema-flexible entity database. Use these API endpoints for persistence:
 
@@ -352,17 +398,30 @@ const TodoList = () => {
   // Render with React.createElement...
 };
 
+CRITICAL - CODE FORMAT:
+The component must be a simple const/let definition. DO NOT add return statements or React.createElement calls after the component.
+
+CORRECT:
+const TodoList = () => {
+  return React.createElement('div', ...);
+};
+
+WRONG:
+const TodoList = () => {
+  return React.createElement('div', ...);
+};
+return React.createElement(TodoList);  ← NEVER DO THIS
+
 IMPORTANT:
 - Return valid JSON only (no markdown, no code fences)
-- MANDATORY: Use shadcn Button component, not HTML button
+- MANDATORY: Use shadcn Button, Input, Card components
 - MANDATORY: Use theme-aware classes (bg-background, text-foreground, bg-card, bg-muted)
-- NEVER use hardcoded colors (no bg-black, bg-white, bg-gray-700, text-black, text-white)
+- NEVER use hardcoded colors (no slate-500, blue-500, gray-700, etc.)
 - Wrap all apps in Card component
-- grid grid-cols-4 gap-2 creates perfect 4-column layout
 - DO NOT create helper components inside
 - Apps must look good in BOTH light and dark mode
 - Use database API for persistence when user needs data to persist
-- Use entityType that matches the app (todo, note, contact, product, etc.)`;
+- Component name can be anything (Calculator, TodoList, etc.)`;
 
   const userPrompt = `Create a web application component with the following requirements:
 

@@ -50,6 +50,11 @@ export default function HomePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'chat'>('grid')
   const [chatHistory, setChatHistory] = useState<Array<{ question: string; answer: string; timestamp: number }>>([])
   const [hasNewMessage, setHasNewMessage] = useState(false)
+  const [showAppSuggestions, setShowAppSuggestions] = useState(false)
+  const [appSuggestions, setAppSuggestions] = useState<any[]>([])
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0)
+  const [mentionStartPos, setMentionStartPos] = useState<number | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     // Load generating apps from localStorage
@@ -121,6 +126,63 @@ export default function HomePage() {
     }
   }
 
+  const handleComposerTextChange = (text: string) => {
+    setComposerText(text)
+    
+    // Check for @ mention
+    const cursorPos = textareaRef.current?.selectionStart || 0
+    const textBeforeCursor = text.substring(0, cursorPos)
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+    
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
+      
+      // Check if there's no space after @ (we're in the middle of a mention)
+      if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
+        const searchTerm = textAfterAt.toLowerCase()
+        const filtered = apps.filter(app => 
+          app.data.name.toLowerCase().includes(searchTerm)
+        )
+        
+        if (filtered.length > 0) {
+          setAppSuggestions(filtered)
+          setShowAppSuggestions(true)
+          setMentionStartPos(lastAtIndex)
+          setSelectedSuggestionIndex(0)
+        } else {
+          setShowAppSuggestions(false)
+        }
+      } else {
+        setShowAppSuggestions(false)
+      }
+    } else {
+      setShowAppSuggestions(false)
+    }
+  }
+  
+  const insertAppMention = (appName: string) => {
+    if (mentionStartPos === null) return
+    
+    const beforeMention = composerText.substring(0, mentionStartPos)
+    const cursorPos = textareaRef.current?.selectionStart || 0
+    const afterCursor = composerText.substring(cursorPos)
+    
+    const newText = `${beforeMention}@${appName} ${afterCursor}`
+    setComposerText(newText)
+    setShowAppSuggestions(false)
+    setMentionStartPos(null)
+    
+    // Set cursor position after the inserted mention
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newCursorPos = beforeMention.length + appName.length + 2 // +2 for @ and space
+        textareaRef.current.selectionStart = newCursorPos
+        textareaRef.current.selectionEnd = newCursorPos
+        textareaRef.current.focus()
+      }
+    }, 0)
+  }
+
   const handleGenerateApp = async () => {
     if (!composerText.trim()) {
       toast.error('Please describe what you want')
@@ -128,6 +190,7 @@ export default function HomePage() {
     }
 
     setIsParsingIntent(true)
+    setShowAppSuggestions(false)
 
     try {
       // Parse intent with AI
@@ -147,6 +210,23 @@ export default function HomePage() {
       }
 
       const intent = await response.json()
+      
+      // Handle actions that don't need confirmation
+      if (intent.intent === 'open') {
+        // Open the app
+        const appToOpen = apps.find(app => 
+          app.data.name.toLowerCase() === intent.targetApp.toLowerCase()
+        )
+        if (appToOpen) {
+          router.push(`/applets/${appToOpen.id}`)
+          setComposerText('')
+          setShowComposer(false)
+        } else {
+          toast.error(`App "${intent.targetApp}" not found`)
+        }
+        setIsParsingIntent(false)
+        return
+      }
       
       // If it's a question, answer immediately without confirmation
       if (intent.intent === 'question') {
@@ -190,8 +270,12 @@ export default function HomePage() {
         } else {
           toast.error('Failed to answer question')
         }
+      } else if (!intent.needsConfirmation) {
+        // Execute immediately without confirmation
+        await executeActionDirect(intent)
+        setIsParsingIntent(false)
       } else {
-        // Show confirmation for other actions
+        // Show confirmation for destructive actions
         setPendingAction({
           ...intent,
           prompt: composerText.trim()
@@ -202,6 +286,96 @@ export default function HomePage() {
     } finally {
       setIsParsingIntent(false)
     }
+  }
+
+  const executeActionDirect = async (action: any) => {
+    if (action.intent === 'create') {
+      // Generate new app without confirmation
+      const lines = action.appPrompt.split('\n')
+      const appName = lines[0].length > 50 ? lines[0].substring(0, 50) : lines[0]
+
+      const tempId = `generating-${Date.now()}`
+      const appData = { 
+        id: tempId, 
+        name: appName, 
+        prompt: action.appPrompt,
+        startTime: Date.now()
+      }
+      
+      const updatedGenerating = [...generatingApps, appData]
+      setGeneratingApps(updatedGenerating)
+      localStorage.setItem('generatingApps', JSON.stringify(updatedGenerating))
+      
+      toast.success('Generating app...')
+      
+      fetch('/api/apps/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appName: appName,
+          prompt: action.appPrompt
+        })
+      }).then(async (response) => {
+        const updated = generatingApps.filter(a => a.id !== tempId)
+        setGeneratingApps(updated)
+        localStorage.setItem('generatingApps', JSON.stringify(updated))
+        
+        if (response.ok) {
+          toast.success('App generated successfully!')
+          loadApps()
+        } else {
+          const error = await response.json()
+          toast.error(error.error || 'Failed to generate app')
+        }
+      })
+    } else if (action.intent === 'data_action' && action.dataAction.action === 'create') {
+      // Create data without confirmation
+      const dataAction = action.dataAction
+      const response = await fetch('/api/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entityType: dataAction.entityType,
+          data: dataAction.data
+        })
+      })
+      
+      if (response.ok) {
+        toast.success(`Created ${dataAction.entityType}`)
+      } else {
+        toast.error('Failed to create')
+      }
+    } else if (action.intent === 'delete') {
+      // Delete app
+      const appToDelete = apps.find(app => 
+        app.data.name.toLowerCase() === action.targetApp.toLowerCase()
+      )
+      if (appToDelete) {
+        await deleteEntity(appToDelete.id, true)
+        toast.success(`Deleted ${appToDelete.data.name}`)
+        loadApps()
+      }
+    } else if (action.intent === 'rename') {
+      // Rename app
+      const appToRename = apps.find(app => 
+        app.data.name.toLowerCase() === action.targetApp.toLowerCase()
+      )
+      if (appToRename) {
+        await fetch('/api/entities/update', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: appToRename.id,
+            updates: { name: action.newName }
+          })
+        })
+        toast.success(`Renamed to ${action.newName}`)
+        loadApps()
+      }
+    }
+    
+    setComposerText('')
+    setShowComposer(false)
   }
 
   const executeAction = async () => {
@@ -219,7 +393,7 @@ export default function HomePage() {
       toast.success('Executing...')
       
       // Check if this is a "delete all" or specific item action
-      const isDeleteAll = dataAction.action === 'delete' && !dataAction.query
+      const isDeleteAll = dataAction.action === 'deleteAll' || (dataAction.action === 'delete' && dataAction.query === 'all')
       
       if (isDeleteAll) {
         // Delete all entities of this type
@@ -413,24 +587,19 @@ export default function HomePage() {
       </header>
 
       <main className="flex-1 p-4 md:p-6 pb-36 overflow-auto">
-        <div className="max-w-7xl mx-auto space-y-4">
+        <div className="max-w-7xl mx-auto h-full">
           {viewMode === 'chat' ? (
             chatHistory.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <Card className="max-w-md">
-                  <CardContent className="p-8 text-center">
-                    <MessageSquare className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-xl font-semibold mb-2">Chat Mode</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Use the composer below to chat with your apps and data
-                    </p>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <p>• Ask questions about your data</p>
-                      <p>• Create, delete, or rename apps</p>
-                      <p>• Get answers from your applets</p>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="flex items-center justify-center min-h-[calc(100vh-300px)]">
+                <div className="text-center max-w-md">
+                  <MessageSquare className="h-16 w-16 mx-auto mb-6 text-muted-foreground" />
+                  <h3 className="text-2xl font-semibold mb-6">Chat Mode</h3>
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <p>• Ask questions about your data</p>
+                    <p>• Create, delete, or rename apps</p>
+                    <p>• Get answers from your applets</p>
+                  </div>
+                </div>
               </div>
               ) : (
               <div className="max-w-3xl mx-auto space-y-6">
@@ -504,21 +673,24 @@ export default function HomePage() {
                   </Card>
                 )
               })}
-            </div>
-          ) : (
-            <Card className="border-2 border-dashed">
-              <CardContent className="p-12 text-center">
-                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="h-8 w-8 text-purple-600" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">No Apps Yet</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Describe what you want to build in the composer below
-                  </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              ) : (
+                <div className="flex items-center justify-center min-h-[calc(100vh-300px)]">
+                  <Card className="border-2 border-dashed max-w-md">
+                    <CardContent className="p-12 text-center">
+                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                        <Brain className="h-8 w-8 text-primary" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">No Apps Yet</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Describe what you want to build in the composer below
+                        </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+ 
       </main>
 
       {/* Confirmation Popup */}
@@ -529,10 +701,12 @@ export default function HomePage() {
               <div>
                 <p className="font-semibold text-base">{pendingAction.description}</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {pendingAction.intent === 'create' && 'This will generate a new app'}
-                  {pendingAction.intent === 'delete' && `This will delete ${pendingAction.targetApp}`}
-                  {pendingAction.intent === 'rename' && `Rename ${pendingAction.targetApp} to ${pendingAction.newName}`}
-                  {pendingAction.intent === 'data_action' && `This will ${pendingAction.dataAction?.action} ${pendingAction.dataAction?.entityType} data`}
+                  {pendingAction.intent === 'create' && 'Generate a new app'}
+                  {pendingAction.intent === 'delete' && `Delete ${pendingAction.targetApp}`}
+                  {pendingAction.intent === 'update' && `Update ${pendingAction.targetApp}`}
+                  {pendingAction.intent === 'data_action' && pendingAction.dataAction?.action === 'deleteAll' && `Delete all ${pendingAction.dataAction?.entityType}s`}
+                  {pendingAction.intent === 'data_action' && pendingAction.dataAction?.action === 'delete' && `Delete ${pendingAction.dataAction?.entityType}`}
+                  {pendingAction.intent === 'data_action' && pendingAction.dataAction?.action === 'update' && `Update ${pendingAction.dataAction?.entityType}`}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -559,43 +733,92 @@ export default function HomePage() {
       {/* Floating Composer */}
       <div className="fixed bottom-4 left-0 right-0 z-50">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="bg-background border border-border rounded-2xl overflow-hidden">
-            <div className="flex items-center gap-2 p-3">
-              <Textarea
-                placeholder="What do you want to do?"
-                value={composerText}
-                onChange={(e) => setComposerText(e.target.value)}
-                onFocus={() => setShowComposer(true)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault()
-                    handleGenerateApp()
-                  }
-                }}
-                style={{ boxShadow: 'none', outline: 'none', height: '40px', minHeight: '40px', maxHeight: '40px', resize: 'none', lineHeight: '1.5', overflow: 'hidden' }}
-                className="flex-1 !border-0 !ring-0 !ring-offset-0 !outline-none shadow-none bg-transparent focus:!border-0 focus:!ring-0 focus:!outline-none focus-visible:!ring-0 focus-visible:!border-0 focus-visible:!outline-none py-2.5"
-                rows={1}
-              />
-              <Button
-                onClick={handleGenerateApp}
-                disabled={!composerText.trim() || isParsingIntent}
-                variant="default"
-                className="flex-shrink-0 h-10 px-4 gap-2"
-              >
-                {isParsingIntent ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="font-semibold">Thinking...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="font-semibold">Run</span>
-                    <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-primary-foreground/20 bg-primary-foreground/10 px-1.5 font-mono text-[10px] font-medium opacity-100">
-                      <span className="text-xs">⌘</span>↵
-                    </kbd>
-                  </>
-                )}
-              </Button>
+          <div className="relative">
+            {/* App Suggestions Dropdown */}
+            {showAppSuggestions && appSuggestions.length > 0 && (
+              <div className="absolute bottom-full mb-2 left-0 right-0 bg-popover border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {appSuggestions.map((app, index) => {
+                  const Icon = getIconForType(app.data.componentType)
+                  return (
+                    <button
+                      key={app.id}
+                      onClick={() => insertAppMention(app.data.name)}
+                      onMouseEnter={() => setSelectedSuggestionIndex(index)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                        index === selectedSuggestionIndex 
+                          ? 'bg-accent text-accent-foreground' 
+                          : 'hover:bg-accent/50'
+                      }`}
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="h-4 w-4 text-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{app.data.name}</p>
+                        {app.data.description && (
+                          <p className="text-xs text-muted-foreground truncate">{app.data.description}</p>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            
+            <div className="bg-background border border-border rounded-2xl overflow-hidden">
+              <div className="flex items-center gap-2 p-3">
+                <Textarea
+                  ref={textareaRef}
+                  placeholder="What do you want to do? (Type @ to mention apps)"
+                  value={composerText}
+                  onChange={(e) => handleComposerTextChange(e.target.value)}
+                  onFocus={() => setShowComposer(true)}
+                  onKeyDown={(e) => {
+                    if (showAppSuggestions) {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault()
+                        setSelectedSuggestionIndex(prev => 
+                          prev < appSuggestions.length - 1 ? prev + 1 : prev
+                        )
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault()
+                        setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : 0)
+                      } else if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
+                        e.preventDefault()
+                        insertAppMention(appSuggestions[selectedSuggestionIndex].data.name)
+                      } else if (e.key === 'Escape') {
+                        setShowAppSuggestions(false)
+                      }
+                    } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault()
+                      handleGenerateApp()
+                    }
+                  }}
+                  style={{ boxShadow: 'none', outline: 'none', height: '40px', minHeight: '40px', maxHeight: '40px', resize: 'none', lineHeight: '1.5', overflow: 'hidden' }}
+                  className="flex-1 !border-0 !ring-0 !ring-offset-0 !outline-none shadow-none bg-transparent focus:!border-0 focus:!ring-0 focus:!outline-none focus-visible:!ring-0 focus-visible:!border-0 focus-visible:!outline-none py-2.5"
+                  rows={1}
+                />
+                <Button
+                  onClick={handleGenerateApp}
+                  disabled={!composerText.trim() || isParsingIntent}
+                  variant="default"
+                  className="flex-shrink-0 h-10 px-4 gap-2"
+                >
+                  {isParsingIntent ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="font-semibold">Thinking...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold">Run</span>
+                      <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-primary-foreground/20 bg-primary-foreground/10 px-1.5 font-mono text-[10px] font-medium opacity-100">
+                        <span className="text-xs">⌘</span>↵
+                      </kbd>
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

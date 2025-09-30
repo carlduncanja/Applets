@@ -180,7 +180,7 @@ export default function AppletRunnerPage() {
       }
 
       toast.success(saveAsNewVersion ? 'Saved as new version!' : 'Code updated!')
-      setShowCodeEditor(false)
+      setShowEditor(false)
       
       // Reload the app
       await loadApp()
@@ -267,6 +267,17 @@ export default function AppletRunnerPage() {
                   scrollBeyondLastLine: false,
                   automaticLayout: true,
                   tabSize: 2,
+                }}
+                onMount={(editor) => {
+                  // Add Cmd+S / Ctrl+S shortcut to save
+                  editor.addCommand(
+                    (typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0) 
+                      ? 2048 | 49 // Cmd+S on Mac (KeyMod.CtrlCmd | KeyCode.KeyS)
+                      : 2048 | 49, // Ctrl+S on Windows/Linux
+                    () => {
+                      handleSaveCode(false)
+                    }
+                  )
                 }}
               />
             </div>

@@ -38,6 +38,7 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
     let cleanCode = code
       .replace(/^import\s+.*?\s+from\s+['"]react['"];?\s*$/gm, '')
       .replace(/^import\s+.*?;?\s*$/gm, '')
+      .replace(/return\s+React\.createElement\([A-Z][a-zA-Z0-9]*\);?\s*$/gm, '') // Remove trailing createElement calls
       .trim();
     
     // Check if code contains JSX (which we can't execute)
