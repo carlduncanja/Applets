@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import ReactMarkdown from "react-markdown"
 import { 
   Brain,
   Plus, 
@@ -68,6 +69,7 @@ export default function HomePage() {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0)
   const [mentionStartPos, setMentionStartPos] = useState<number | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
   const [multiStepExecution, setMultiStepExecution] = useState<{
     active: boolean;
     originalPrompt: string;
@@ -184,6 +186,13 @@ export default function HomePage() {
       console.log('✓ Saved chat history:', chatHistory.length, 'messages')
     }
   }, [chatHistory])
+
+  // Scroll to bottom when chat messages change
+  useEffect(() => {
+    if (viewMode === 'chat' && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [chatHistory, multiStepExecution?.messages, viewMode])
 
   const loadApiKeys = async () => {
     try {
@@ -1480,7 +1489,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="flex-1 p-4 md:p-6 mb-50 overflow-auto">
+      <main className="flex-1 p-4 md:p-6 mb-100 overflow-auto">
         <div className="max-w-7xl mx-auto h-full">
           {viewMode === 'chat' ? (
             multiStepExecution?.active || multiStepExecution?.messages.length ? (
@@ -1509,7 +1518,9 @@ export default function HomePage() {
                     {msg.role === 'user' ? (
                       <div className="flex justify-end">
                         <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-3">
-                          <p className="text-sm">{msg.content}</p>
+                          <div className="text-sm prose prose-sm prose-invert max-w-none">
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          </div>
                         </div>
                       </div>
                     ) : msg.role === 'agent' ? (
@@ -1521,7 +1532,9 @@ export default function HomePage() {
                             </div>
                             <div className="flex-1">
                               <div className="bg-primary/10 border border-primary/20 text-foreground rounded-2xl rounded-tl-sm px-4 py-3">
-                                <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                                <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                </div>
                               </div>
                               <p className="text-xs text-muted-foreground mt-1 ml-2">
                                 {new Date(msg.timestamp).toLocaleTimeString()}
@@ -1534,7 +1547,9 @@ export default function HomePage() {
                       <div className="flex justify-start ml-10">
                         <div className="max-w-[80%]">
                           <div className="bg-muted text-foreground rounded-xl px-4 py-2.5 border-l-4 border-primary">
-                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                            <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                              <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1551,6 +1566,9 @@ export default function HomePage() {
                     </div>
                   </div>
                 )}
+                
+                {/* Scroll anchor */}
+                <div ref={chatEndRef} />
               </div>
             ) : chatHistory.length === 0 ? (
               <div className="flex items-center justify-center min-h-[calc(100vh-300px)]">
@@ -1589,7 +1607,9 @@ export default function HomePage() {
                     {/* Question bubble - right aligned */}
                     <div className="flex justify-end">
                       <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-3">
-                        <p className="text-sm">{chat.question}</p>
+                        <div className="text-sm prose prose-sm prose-invert max-w-none">
+                          <ReactMarkdown>{chat.question}</ReactMarkdown>
+                        </div>
                       </div>
                     </div>
                     
@@ -1597,7 +1617,9 @@ export default function HomePage() {
                     <div className="flex justify-start">
                       <div className="max-w-[85%]">
                         <div className="bg-muted text-foreground rounded-2xl rounded-tl-sm px-4 py-3">
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{chat.answer}</p>
+                          <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown>{chat.answer}</ReactMarkdown>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 ml-2">
                           {new Date(chat.timestamp).toLocaleTimeString()}
@@ -1606,6 +1628,9 @@ export default function HomePage() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Scroll anchor */}
+                <div ref={chatEndRef} />
               </div>
             )
           ) : apps.length > 0 || generatingApps.length > 0 ? (

@@ -276,8 +276,8 @@ export default function AppletRunnerPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-background flex flex-col relative animate-in fade-in duration-200">
-      <header className="border-b border-border bg-card z-50 flex-shrink-0">
+    <div className="min-h-screen bg-background flex flex-col relative animate-in fade-in duration-200">
+      <header className="sticky top-0 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 z-50 flex-shrink-0">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -355,12 +355,12 @@ export default function AppletRunnerPage() {
         </div>
       )}
 
-      <main className="flex-1 overflow-hidden relative">
+      <main className="flex-1 overflow-y-auto relative">
         {isIterating ? (
           <AppIteratingSkeleton />
         ) : showEditor ? (
-          <div className="h-full flex flex-col bg-background">
-            <div className="flex-1 overflow-hidden">
+          <div className="min-h-screen flex flex-col bg-background">
+            <div className="h-[calc(100vh-200px)] overflow-hidden">
               <MonacoEditor
                 height="100%"
                 defaultLanguage="javascript"
@@ -440,7 +440,7 @@ export default function AppletRunnerPage() {
             </div>
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center h-full p-4">
+          <div className="flex items-center justify-center min-h-[calc(100vh-150px)] p-4">
             <Card className="w-full max-w-md border-destructive">
               <CardHeader>
                 <CardTitle className="text-destructive flex items-center gap-2">
@@ -492,7 +492,7 @@ export default function AppletRunnerPage() {
             <AppComponent />
           </ComponentErrorBoundary>
         ) : (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center min-h-[calc(100vh-150px)]">
             <div className="text-center space-y-4">
               <Play className="h-12 w-12 text-muted-foreground mx-auto" />
               <p className="text-muted-foreground">Component not loaded</p>
