@@ -41,25 +41,43 @@ Return ONLY a JSON object:
   "currentStepNumber": number,
   "steps": [
     {
-      "type": "query" | "action" | "analysis" | "confirmation",
+      "type": "query" | "action",
       "description": "What this step does",
-      "intent": "question" | "data_action" | "create" | etc,
-      "query": "SQL-like query or question",
-      "dataAction": {...},
+      "intent": "question" | "data_action" | "improve",
+      "query": "question to ask" (for query type),
+      "targetApp": "app name" (for improve type),
+      "improvementPrompt": "what to improve" (for improve type),
+      "dataAction": {
+        "action": "create" | "delete" | "update" | "createMany" | "deleteMany" | "updateMany",
+        "entityType": "type of entity",
+        "scope": "all" | "some" | "one" | "batch",
+        "filters": {},
+        "data": {},
+        "items": [],
+        "updates": {}
+      },
+      "message": "Message to show user about this step",
       "requiresConfirmation": true/false
     }
   ],
   "nextStep": {
-    "type": "query" | "action" | "analysis" | "confirmation",
-    "description": "User-friendly description of what's happening",
-    "intent": "question" | "data_action" | "create",
-    "query": "question to ask" (for query type),
-    "dataAction": {...} (for action type),
-    "message": "Message to show user about this step"
+    "type": "query" | "action",
+    "description": "User-friendly description",
+    "intent": "question" | "data_action" | "improve",
+    "query": "question" (for query),
+    "targetApp": "app name" (for improve),
+    "improvementPrompt": "what to improve" (for improve),
+    "dataAction": {...} (for data_action),
+    "message": "Message to show user"
   },
   "isComplete": true/false,
-  "finalMessage": "Summary of what was accomplished"
+  "finalMessage": "Summary"
 }
+
+IMPORTANT: Only use standard actions:
+- For app improvements: use "improve" intent with targetApp and improvementPrompt
+- For data operations: use "data_action" intent with proper dataAction object
+- Do NOT create custom actions like "updateConfig" - use the defined schema above
 
 Examples of multi-step tasks:
 - "delete the 5 oldest notes" → Step 1: Query to find oldest notes, Step 2: Show list, Step 3: Delete them
@@ -68,9 +86,11 @@ Examples of multi-step tasks:
 - "delete all notes about X" → Step 1: Query notes matching X, Step 2: Confirm count, Step 3: Delete
 
 Single-step tasks (return needsMultiStep: false):
-- "delete all notes" → Direct action
-- "create 5 todos" → Direct action
-- "what do I have to do today" → Direct query`;
+- "delete all notes" → Direct action (intent: "data_action")
+- "create 5 todos" → Direct action (intent: "data_action")
+- "what do I have to do today" → Direct query (intent: "question")
+- "add dark mode to calculator" → Direct improvement (intent: "improve", targetApp: "Calculator", improvementPrompt: "add dark mode")
+- "fix the notes bug" → Direct improvement (intent: "improve", targetApp: "Notes", improvementPrompt: "fix bugs")`;
 
     const response = await client.chat.completions.create({
       model: 'claude-sonnet-4-5-20250929',

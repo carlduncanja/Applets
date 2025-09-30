@@ -307,6 +307,56 @@ export default function HomePage() {
         return
       }
       
+      // If it's an improve intent, execute immediately
+      if (intent.intent === 'improve') {
+        const appToImprove = apps.find(app => 
+          app.data.name.toLowerCase() === intent.targetApp.toLowerCase()
+        )
+        
+        if (!appToImprove) {
+          toast.error(`App "${intent.targetApp}" not found`)
+          setIsParsingIntent(false)
+          return
+        }
+        
+        setComposerText('')
+        setShowComposer(false)
+        toast.success('Improving app...')
+        
+        // Call iterate API
+        fetch('/api/apps/iterate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            appId: appToImprove.id,
+            iterationPrompt: intent.improvementPrompt
+          })
+        }).then(async (response) => {
+          setIsParsingIntent(false)
+          
+          if (response.ok) {
+            const result = await response.json()
+            toast.success(`App improved! ${result.changes || 'Improvements applied'}`)
+            loadApps()
+            
+            // Add to chat history
+            setChatHistory(prev => [...prev, {
+              question: composerText.trim(),
+              answer: `Successfully improved ${intent.targetApp}: ${result.changes || 'Applied improvements'}`,
+              timestamp: Date.now()
+            }])
+          } else {
+            const error = await response.json()
+            toast.error(error.error || 'Failed to improve app')
+          }
+        }).catch((error) => {
+          setIsParsingIntent(false)
+          toast.error('Failed to improve app: ' + error.message)
+        })
+        
+        return
+      }
+      
       // If it's a question, answer immediately without confirmation
       if (intent.intent === 'question') {
         setComposerText('')
@@ -559,7 +609,7 @@ export default function HomePage() {
     try {
       let stepResult: any = null
 
-      if (step.type === 'query') {
+      if (step.type === 'query' && step.query) {
         // Execute query
         const response = await fetch('/api/apps/ask-question', {
           method: 'POST',
@@ -581,6 +631,39 @@ export default function HomePage() {
             messages: [...prev.messages, {
               role: 'system',
               content: result.answer,
+              timestamp: Date.now()
+            }]
+          } : null)
+        }
+      } else if (step.type === 'action' && step.intent === 'improve') {
+        // Improve an app
+        const appToImprove = apps.find(app => 
+          app.data.name.toLowerCase() === step.targetApp.toLowerCase()
+        )
+        
+        if (appToImprove) {
+          const response = await fetch('/api/apps/iterate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              appId: appToImprove.id,
+              iterationPrompt: step.improvementPrompt
+            })
+          })
+          
+          if (response.ok) {
+            const result = await response.json()
+            stepResult = `Improved ${step.targetApp}: ${result.changes || 'Applied improvements'}`
+          }
+        }
+
+        if (stepResult) {
+          setMultiStepExecution(prev => prev ? {
+            ...prev,
+            stepData: [...prev.stepData, { step: stepNumber, data: stepResult }],
+            messages: [...prev.messages, {
+              role: 'system',
+              content: `✓ ${stepResult}`,
               timestamp: Date.now()
             }]
           } : null)
@@ -1199,11 +1282,12 @@ export default function HomePage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {pendingAction.intent === 'create' && 'Generate a new app'}
-                    {pendingAction.intent === 'delete' && `Delete ${pendingAction.targetApp}`}
-                    {pendingAction.intent === 'update' && `Update ${pendingAction.targetApp}`}
-                    {pendingAction.intent === 'data_action' && pendingAction.dataAction?.action === 'deleteAll' && `Delete all ${pendingAction.dataAction?.entityType}s`}
+                <p className="text-sm text-muted-foreground mt-1">
+                  {pendingAction.intent === 'create' && 'Generate a new app'}
+                  {pendingAction.intent === 'improve' && `Improve ${pendingAction.targetApp}`}
+                  {pendingAction.intent === 'delete' && `Delete ${pendingAction.targetApp}`}
+                  {pendingAction.intent === 'update' && `Update ${pendingAction.targetApp}`}
+                  {pendingAction.intent === 'data_action' && pendingAction.dataAction?.action === 'deleteAll' && `Delete all ${pendingAction.dataAction?.entityType}s`}
                     {pendingAction.intent === 'data_action' && pendingAction.dataAction?.action === 'deleteMany' && `Delete ${pendingAction.dataAction?.scope === 'some' ? 'filtered' : ''} ${pendingAction.dataAction?.entityType}s`}
                     {pendingAction.intent === 'data_action' && pendingAction.dataAction?.action === 'updateMany' && `Update ${pendingAction.dataAction?.scope === 'some' ? 'filtered' : ''} ${pendingAction.dataAction?.entityType}s`}
                     {pendingAction.intent === 'data_action' && pendingAction.dataAction?.action === 'delete' && `Delete ${pendingAction.dataAction?.entityType}`}

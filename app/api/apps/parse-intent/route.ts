@@ -38,18 +38,20 @@ Use previous conversation context to understand references like "it", "that one"
 Determine if the user wants to:
 1. OPEN an app
 2. CREATE a new app
-3. DELETE app(s) or data
-4. RENAME/UPDATE app or data
-5. ASK A QUESTION about their data
-6. MANIPULATE DATA (add/remove/update any data including apps)
+3. IMPROVE/UPDATE an existing app (add features, change behavior, fix bugs)
+4. DELETE app(s) or data
+5. RENAME/UPDATE app or data
+6. ASK A QUESTION about their data
+7. MANIPULATE DATA (add/remove/update any data including apps)
 
 Return ONLY a JSON object with this structure:
 {
-  "intent": "open" | "create" | "delete" | "update" | "question" | "data_action",
+  "intent": "open" | "create" | "improve" | "delete" | "rename" | "question" | "data_action" | "chain",
   "targetApp": "app name if opening or modifying",
   "newName": "new name if renaming",
   "description": "what the user wants to do in simple terms",
   "appPrompt": "full prompt for app generation if creating",
+  "improvementPrompt": "what to improve/change (for improve intent)",
   "question": "the user's question if asking",
   "needsConfirmation": true/false,
   "dataAction": {
@@ -83,6 +85,9 @@ For "chain" intent:
 
 Examples:
 User: "open calculator" → {"intent": "open", "targetApp": "Calculator", "description": "Open Calculator app", "needsConfirmation": false}
+User: "add dark mode to calculator" → {"intent": "improve", "targetApp": "Calculator", "improvementPrompt": "add dark mode toggle", "description": "Improve Calculator with dark mode", "needsConfirmation": false}
+User: "make the notes app show dates" → {"intent": "improve", "targetApp": "Notes", "improvementPrompt": "show dates for each note", "description": "Improve Notes app to show dates", "needsConfirmation": false}
+User: "fix the todo list bug" → {"intent": "improve", "targetApp": "Todo List", "improvementPrompt": "fix bugs", "description": "Fix bugs in Todo List", "needsConfirmation": false}
 User: "delete calculator" → {"intent": "data_action", "description": "Delete Calculator app", "needsConfirmation": true, "dataAction": {"action": "delete", "entityType": "app", "scope": "one", "query": "calculator"}}
 User: "delete all apps" → {"intent": "data_action", "description": "Delete all apps", "needsConfirmation": true, "dataAction": {"action": "deleteAll", "entityType": "app", "scope": "all"}}
 User: "delete all completed todos" → {"intent": "data_action", "description": "Delete all completed todos", "needsConfirmation": true, "dataAction": {"action": "deleteMany", "entityType": "todo", "scope": "some", "filters": {"completed": true}}}
