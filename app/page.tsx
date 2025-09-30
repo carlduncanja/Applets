@@ -218,48 +218,71 @@ export default function HomePage() {
       
       toast.success('Executing...')
       
-      // If deleting or updating, find the entity first
-      let targetEntityId = null
-      if (dataAction.action === 'delete' || dataAction.action === 'update' || dataAction.action === 'toggle') {
-        const searchResponse = await fetch('/api/entities/find', {
-          method: 'POST',
+      // Check if this is a "delete all" or specific item action
+      const isDeleteAll = dataAction.action === 'delete' && !dataAction.query
+      
+      if (isDeleteAll) {
+        // Delete all entities of this type
+        const response = await fetch('/api/entities/delete-many', {
+          method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             entityType: dataAction.entityType,
             filters: {},
-            options: { limit: 10 }
+            soft: true
           })
         })
         
-        if (searchResponse.ok) {
-          const entities = await searchResponse.json()
-          // Find entity matching the query
-          const found = entities.find((e: any) => 
-            JSON.stringify(e.data).toLowerCase().includes(dataAction.query?.toLowerCase() || '')
-          )
-          if (found) {
-            targetEntityId = found.id
+        if (response.ok) {
+          const result = await response.json()
+          toast.success(`Deleted all ${dataAction.entityType}s (${result.count} items)`)
+        } else {
+          toast.error('Failed to delete items')
+        }
+      } else {
+        // Find specific entity if needed
+        let targetEntityId = null
+        if (dataAction.action === 'delete' || dataAction.action === 'update' || dataAction.action === 'toggle') {
+          const searchResponse = await fetch('/api/entities/find', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              entityType: dataAction.entityType,
+              filters: {},
+              options: { limit: 10 }
+            })
+          })
+          
+          if (searchResponse.ok) {
+            const entities = await searchResponse.json()
+            // Find entity matching the query
+            const found = entities.find((e: any) => 
+              JSON.stringify(e.data).toLowerCase().includes(dataAction.query?.toLowerCase() || '')
+            )
+            if (found) {
+              targetEntityId = found.id
+            }
           }
         }
-      }
-      
-      const response = await fetch('/api/apps/execute-data-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: dataAction.action,
-          entityType: dataAction.entityType,
-          data: dataAction.data,
-          entityId: targetEntityId,
-          updates: dataAction.updates
+        
+        const response = await fetch('/api/apps/execute-data-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: dataAction.action,
+            entityType: dataAction.entityType,
+            data: dataAction.data,
+            entityId: targetEntityId,
+            updates: dataAction.updates
+          })
         })
-      })
-      
-      if (response.ok) {
-        const result = await response.json()
-        toast.success(result.message || 'Action completed')
-      } else {
-        toast.error('Failed to execute action')
+        
+        if (response.ok) {
+          const result = await response.json()
+          toast.success(result.message || 'Action completed')
+        } else {
+          toast.error('Failed to execute action')
+        }
       }
     } else if (action.intent === 'delete') {
       const appToDelete = apps.find(app => 

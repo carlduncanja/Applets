@@ -55,6 +55,8 @@ User: "create a weather app" → {"intent": "create", "appPrompt": "create a wea
 User: "what do I have to do today" → {"intent": "question", "question": "what do I have to do today", "description": "Answer question about tasks"}
 User: "add bookmark to google.com" → {"intent": "data_action", "description": "Add bookmark to google.com", "dataAction": {"action": "create", "entityType": "bookmark", "data": {"url": "https://google.com", "title": "Google"}}}
 User: "remove the google bookmark" → {"intent": "data_action", "description": "Remove Google bookmark", "dataAction": {"action": "delete", "entityType": "bookmark", "query": "google"}}
+User: "delete all todos" → {"intent": "data_action", "description": "Delete all todos", "dataAction": {"action": "delete", "entityType": "todo"}}
+User: "clear my bookmarks" → {"intent": "data_action", "description": "Clear all bookmarks", "dataAction": {"action": "delete", "entityType": "bookmark"}}
 User: "mark first task as done" → {"intent": "data_action", "description": "Mark task as complete", "dataAction": {"action": "toggle", "entityType": "todo", "query": "first"}}
 User: "add a note: buy milk" → {"intent": "data_action", "description": "Add note", "dataAction": {"action": "create", "entityType": "note", "data": {"text": "buy milk"}}}`;
 

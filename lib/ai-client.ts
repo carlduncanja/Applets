@@ -91,11 +91,12 @@ Return a JSON object with this exact structure:
 CRITICAL RULES:
 1. Use React.createElement() for ALL components (no JSX)
 2. NEVER define custom components inside (no const Button = ...)
-3. Use shadcn Button component instead of HTML button
-4. Use shadcn Input instead of HTML input
-5. Wrap content in Card components for better design
-6. Use proper Tailwind classes for layout (grid, flex)
-7. Support both light and dark modes with bg-background, text-foreground classes
+3. ALWAYS use shadcn Button component instead of HTML button/input
+4. ALWAYS wrap apps in Card with CardHeader, CardTitle, CardContent
+5. Use proper Tailwind classes for layout (grid, flex)
+6. MANDATORY: Support light AND dark modes with theme colors
+7. NEVER use hardcoded colors (no slate-500, blue-500, gray-700, etc.)
+8. Create polished, professional Apple-style interfaces
 
 STYLING FOR LIGHT/DARK MODE (MANDATORY):
 NEVER use hardcoded colors like bg-black, bg-white, bg-gray-700, text-black, text-white
@@ -109,43 +110,94 @@ ALWAYS use theme-aware classes:
 - Borders: 'border border-border'
 - Accent: 'bg-accent text-accent-foreground'
 
-BUTTON STYLING (IMPORTANT FOR VISIBILITY):
-- Default variant: Good contrast in both modes
-- For number buttons: Use variant='secondary' (better visibility than outline)
-- For operators: Use variant='default' (primary color, best contrast)
-- For functions: Use variant='secondary' 
-- Add className for size: 'h-16 text-xl font-semibold'
-- Example: React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl' }, '7')
+DESIGN REQUIREMENTS FOR ALL APPS:
+1. Wrap in Card: React.createElement(Card, { className: 'w-full max-w-md shadow-2xl' })
+2. Add CardHeader with title
+3. Use CardContent for main content
+4. Round buttons: 'rounded-full' or 'rounded-xl'
+5. Generous padding: 'p-8', 'px-6 py-4'
+6. Shadows: 'shadow-lg', 'shadow-2xl'
+7. Centered layout: 'flex items-center justify-center min-h-screen bg-background'
+8. Input styling: Use shadcn Input component
+9. NEVER use HTML input/button - ONLY shadcn components
 
-EXAMPLE COUNTER (CORRECT WAY):
-const Counter = () => {
-  const [count, setCount] = useState(0);
+BUTTON VARIANTS:
+- variant='secondary' for regular buttons (numbers, items)
+- variant='default' for primary actions (operators, submit)
+- variant='outline' for secondary actions
+- variant='destructive' for delete
+- Size: 'h-16' to 'h-20' for touch-friendly
+- Font: 'text-2xl' or 'text-3xl' for large buttons
+
+EXAMPLE TODO LIST (CORRECT STYLING):
+const TodoList = () => {
+  const [todos, setTodos] = useState([]);
+  const [input, setInput] = useState('');
+  
+  useEffect(() => {
+    // Load from database
+    fetch('/api/entities/find', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entityType: 'todo', filters: {} })
+    }).then(res => res.json()).then(setTodos);
+  }, []);
+  
+  const addTodo = async () => {
+    const res = await fetch('/api/entities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entityType: 'todo',
+        data: { text: input, completed: false }
+      })
+    });
+    setTodos([await res.json(), ...todos]);
+    setInput('');
+  };
   
   return React.createElement('div', { className: 'min-h-screen bg-background p-8 flex items-center justify-center' },
-    React.createElement(Card, { className: 'w-full max-w-md' },
+    React.createElement(Card, { className: 'w-full max-w-2xl shadow-2xl' },
       React.createElement(CardHeader, {},
-        React.createElement(CardTitle, {}, 'Counter App'),
-        React.createElement(CardDescription, {}, 'A simple counter with increment/decrement')
+        React.createElement(CardTitle, { className: 'text-3xl' }, 'Todo List'),
+        React.createElement(CardDescription, {}, todos.filter(t => !t.data.completed).length + ' tasks remaining')
       ),
-      React.createElement(CardContent, { className: 'space-y-6' },
-        React.createElement('div', { className: 'text-6xl font-bold text-center text-foreground' }, count),
-        React.createElement('div', { className: 'flex gap-4' },
-          React.createElement(Button, { 
-            variant: 'outline', 
-            className: 'flex-1',
-            onClick: () => setCount(count - 1) 
-          }, 'Decrement'),
-          React.createElement(Button, { 
-            variant: 'default', 
-            className: 'flex-1',
-            onClick: () => setCount(count + 1) 
-          }, 'Increment')
+      React.createElement(CardContent, { className: 'space-y-4' },
+        React.createElement('div', { className: 'flex gap-2' },
+          React.createElement(Input, {
+            value: input,
+            onChange: (e) => setInput(e.target.value),
+            placeholder: 'Add a task...',
+            className: 'flex-1 h-12'
+          }),
+          React.createElement(Button, {
+            onClick: addTodo,
+            className: 'h-12 px-6'
+          }, 'Add')
         ),
-        React.createElement(Button, { 
-          variant: 'secondary', 
-          className: 'w-full',
-          onClick: () => setCount(0) 
-        }, 'Reset')
+        React.createElement('div', { className: 'space-y-2' },
+          todos.map(todo =>
+            React.createElement('div', {
+              key: todo.id,
+              className: 'flex items-center gap-3 p-4 bg-muted rounded-xl hover:bg-accent transition-colors'
+            },
+              React.createElement(Button, {
+                variant: 'ghost',
+                size: 'icon',
+                className: 'h-6 w-6 rounded-full',
+                onClick: () => toggleTodo(todo)
+              }, todo.data.completed ? '✓' : '○'),
+              React.createElement('span', {
+                className: todo.data.completed ? 'flex-1 line-through text-muted-foreground' : 'flex-1'
+              }, todo.data.text),
+              React.createElement(Button, {
+                variant: 'ghost',
+                size: 'icon',
+                onClick: () => deleteTodo(todo.id)
+              }, '×')
+            )
+          )
+        )
       )
     )
   );
