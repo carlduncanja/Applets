@@ -24,6 +24,15 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
     Textarea,
   } = ComponentRegistry;
   
+  // Helper function to trigger file input click reliably
+  const triggerFileInput = (ref: any) => {
+    if (ref && ref.current) {
+      // Force click event
+      const input = ref.current as HTMLInputElement;
+      input.click();
+    }
+  };
+  
   try {
     // Clean the code - remove any import statements since we're providing dependencies
     let cleanCode = code
@@ -75,6 +84,7 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
       'useMemo',
       'useRef',
       'createElement',
+      'triggerFileInput',
       // shadcn components
       'Button',
       'Input',
@@ -98,6 +108,7 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
       useMemo,
       useRef,
       React.createElement,
+      triggerFileInput,
       // shadcn components
       Button,
       Input,

@@ -233,7 +233,7 @@ export default function HomePage() {
       <main className="flex-1 p-4 md:p-6 pb-36 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-4">
           {isLoadingApps ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="animate-pulse">
                   <CardHeader>
@@ -249,7 +249,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : apps.length > 0 || generatingApps.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {/* Generating apps (skeletons) */}
               {generatingApps.map((genApp) => (
                 <Card 
@@ -296,65 +296,31 @@ export default function HomePage() {
                 return (
                   <Card 
                     key={app.id}
-                    className="cursor-pointer transition-all hover:shadow-xl hover:scale-105 active:scale-100 border-2 hover:border-purple-500/50 relative overflow-hidden group"
+                    className="flex flex-col aspect-square cursor-pointer transition-all hover:shadow-lg hover:scale-105 active:scale-95 border-2 hover:border-primary relative overflow-hidden group"
+                    onClick={() => router.push(`/applets/${app.id}`)}
                   >
                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform" />
                     
-                    <CardHeader>
-                      <div className="flex items-start justify-between relative z-10">
-                        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                          <Icon className="h-6 w-6 text-purple-600" />
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              router.push(`/applets/${app.id}`)
-                            }}
-                          >
-                            <Play className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setAppToDelete(app.id)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                    <CardContent className="flex-1 flex flex-col items-center justify-center gap-2 p-4 relative z-10">
+                      <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                        <Icon className="h-6 w-6 md:h-7 md:w-7 text-purple-600" />
                       </div>
-                      <CardTitle className="text-lg relative z-10">{app.data.name}</CardTitle>
-                      <CardDescription className="relative z-10 line-clamp-2">
-                        {app.data.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3 relative z-10">
-                      <div className="flex items-center justify-between text-sm">
-                        <Badge variant="secondary" className="capitalize">
-                          {app.data.componentType}
-                        </Badge>
-                        {app.data.executions > 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            {app.data.executions} runs
-                          </span>
-                        )}
+                      <div className="text-center space-y-1">
+                        <h3 className="font-semibold text-sm md:text-base">{app.data.name}</h3>
+                        <p className="text-xs text-muted-foreground leading-tight line-clamp-2">
+                          {app.data.description}
+                        </p>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        Created {new Date(app.created_at).toLocaleDateString()}
-                      </div>
-                      <Button 
-                        className="w-full"
-                        onClick={() => router.push(`/applets/${app.id}`)}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setAppToDelete(app.id)
+                        }}
                       >
-                        <Play className="h-4 w-4 mr-2" />
-                        Run App
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </CardContent>
                   </Card>

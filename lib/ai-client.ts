@@ -34,13 +34,50 @@ export async function generateApplication(request: AppGenerationRequest): Promis
 AVAILABLE SHADCN COMPONENTS (use these instead of HTML elements):
 - Button: React.createElement(Button, { variant: 'default'|'destructive'|'outline'|'secondary'|'ghost', size: 'default'|'sm'|'lg'|'icon', onClick: fn }, 'Text')
 - Input: React.createElement(Input, { value, onChange: fn, placeholder: '...' })
-- Label: React.createElement(Label, {}, 'Label text')
+- Label: React.createElement(Label, { htmlFor: 'id' }, 'Label text')
 - Card: React.createElement(Card, { className: '...' }, children)
 - CardHeader, CardTitle, CardDescription, CardContent: Card sub-components
 - Badge: React.createElement(Badge, { variant: 'default'|'secondary'|'destructive'|'outline' }, 'Text')
 - Textarea: React.createElement(Textarea, { value, onChange: fn, rows: 4 })
 
 You can also use HTML elements: 'div', 'span', 'h1', 'h2', 'h3', 'p', 'img', 'form'
+
+FILE UPLOADS (CRITICAL - USE THIS EXACT PATTERN):
+ALWAYS use the triggerFileInput helper function:
+
+const fileInputRef = useRef(null);
+
+const handleFileChange = (e) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result;
+      // Save to database or use directly
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+// Hidden input
+React.createElement('input', {
+  ref: fileInputRef,
+  type: 'file',
+  accept: 'image/*',
+  onChange: handleFileChange,
+  style: { display: 'none' }
+})
+
+// Trigger button - use triggerFileInput helper
+React.createElement(Button, {
+  onClick: () => triggerFileInput(fileInputRef)
+}, 'Upload Image')
+
+// Or clickable div
+React.createElement('div', {
+  onClick: () => triggerFileInput(fileInputRef),
+  className: 'cursor-pointer border-2 border-dashed p-8 text-center hover:border-primary'
+}, 'Click to upload')
 
 Return a JSON object with this exact structure:
 {
