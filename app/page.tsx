@@ -22,7 +22,10 @@ import {
   X,
   LayoutGrid,
   MessageSquare,
-  Key
+  Key,
+  Share2,
+  Copy,
+  Check
 } from "lucide-react"
 import {
   AlertDialog,
@@ -36,6 +39,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { generateShareUrl, type SharedApp } from "@/lib/share-utils"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function HomePage() {
   const router = useRouter()
@@ -65,6 +76,10 @@ export default function HomePage() {
     stepData: any[];
     messages: Array<{ role: 'agent' | 'system' | 'user'; content: string; timestamp: number }>;
   } | null>(null)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [shareUrl, setShareUrl] = useState('')
+  const [shareCopied, setShareCopied] = useState(false)
+  const [selectedAppsForShare, setSelectedAppsForShare] = useState<any[]>([])
 
   useEffect(() => {
     // Load generating apps from localStorage
@@ -1221,6 +1236,31 @@ export default function HomePage() {
     }
   }
 
+  const handleShareApp = (app: any, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent card click
+    
+    const sharedApp: SharedApp = {
+      name: app.data.name,
+      icon: app.data.icon || '📦',
+      description: app.data.description || '',
+      code: app.data.code,
+      requiredApiKeys: app.data.requiredApiKeys || []
+    }
+    
+    const url = generateShareUrl([sharedApp])
+    setShareUrl(url)
+    setSelectedAppsForShare([app])
+    setShareDialogOpen(true)
+    setShareCopied(false)
+  }
+
+  const copyShareUrl = () => {
+    navigator.clipboard.writeText(shareUrl)
+    setShareCopied(true)
+    toast.success('Share link copied to clipboard!')
+    setTimeout(() => setShareCopied(false), 2000)
+  }
+
 
   if (isLoadingApps) {
     return null
@@ -1418,6 +1458,18 @@ export default function HomePage() {
                       </div>
                     )}
                     
+                    {/* Share button */}
+                    <div className="absolute top-1.5 left-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-6 w-6 rounded-full shadow-lg"
+                        onClick={(e) => handleShareApp(app, e)}
+                      >
+                        <Share2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    
                     <CardContent className="flex-1 flex flex-col items-center justify-center gap-1.5 p-3 relative z-10">
                       <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center">
                         <Icon className="h-5 w-5 md:h-6 md:w-6 text-foreground" />
@@ -1602,6 +1654,67 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Share Dialog */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Share App{selectedAppsForShare.length > 1 ? 's' : ''}</DialogTitle>
+            <DialogDescription>
+              Share {selectedAppsForShare.length === 1 ? selectedAppsForShare[0]?.data.name : `${selectedAppsForShare.length} apps`} with others via a link
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {selectedAppsForShare.length > 0 && (
+              <div className="bg-muted rounded-lg p-4 space-y-2">
+                {selectedAppsForShare.map((app, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm">{app.data.icon || '📦'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{app.data.name}</p>
+                      {app.data.requiredApiKeys && app.data.requiredApiKeys.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Requires: {app.data.requiredApiKeys.join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label>Share Link</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={shareUrl}
+                  readOnly
+                  className="flex-1 font-mono text-xs"
+                  onClick={(e) => e.currentTarget.select()}
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={copyShareUrl}
+                  className="flex-shrink-0"
+                >
+                  {shareCopied ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Anyone with this link can import {selectedAppsForShare.length === 1 ? 'this app' : 'these apps'} into their AI-OS
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )
