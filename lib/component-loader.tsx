@@ -1,4 +1,5 @@
 import React from 'react';
+import { ComponentRegistry } from './component-registry';
 
 /**
  * Safely loads and executes a React component from string code
@@ -8,6 +9,20 @@ import React from 'react';
 export function loadComponentFromCode(code: string): React.ComponentType<any> {
   // Get React and hooks
   const { useState, useEffect, useCallback, useMemo, useRef, createElement } = React;
+  
+  // Destructure shadcn components
+  const {
+    Button,
+    Input,
+    Label,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Badge,
+    Textarea,
+  } = ComponentRegistry;
   
   try {
     // Clean the code - remove any import statements since we're providing dependencies
@@ -51,7 +66,7 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
       throw new Error('No React component found. Detected name: ${componentName || 'none'}. Expected a const/let/var starting with capital letter.');
     `;
     
-    // Create a function that executes the code with React dependencies available
+    // Create a function that executes the code with React dependencies and shadcn components
     const ComponentFactory = new Function(
       'React',
       'useState',
@@ -60,10 +75,21 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
       'useMemo',
       'useRef',
       'createElement',
+      // shadcn components
+      'Button',
+      'Input',
+      'Label',
+      'Card',
+      'CardContent',
+      'CardDescription',
+      'CardHeader',
+      'CardTitle',
+      'Badge',
+      'Textarea',
       wrappedCode
     );
     
-    // Execute and get the component
+    // Execute and get the component with all dependencies
     const Component = ComponentFactory(
       React,
       useState,
@@ -71,7 +97,18 @@ export function loadComponentFromCode(code: string): React.ComponentType<any> {
       useCallback,
       useMemo,
       useRef,
-      createElement
+      React.createElement,
+      // shadcn components
+      Button,
+      Input,
+      Label,
+      Card,
+      CardContent,
+      CardDescription,
+      CardHeader,
+      CardTitle,
+      Badge,
+      Textarea
     );
     
     if (typeof Component !== 'function') {

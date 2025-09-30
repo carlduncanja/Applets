@@ -24,54 +24,150 @@ export interface GeneratedApp {
   code: string;
   componentType: 'react' | 'form' | 'dashboard' | 'tool';
   requiredData?: string[];
-  htmlOutput?: string;
 }
 
 export async function generateApplication(request: AppGenerationRequest): Promise<GeneratedApp> {
   const client = getAIClient();
 
-  const systemPrompt = `You are an expert at generating complete, working React components for web applications.
+  const systemPrompt = `You are an expert at generating complete, working React components using shadcn UI and Tailwind CSS.
 
-Given a user's description, generate a fully functional React component that:
-1. Is a complete, self-contained component
-2. Uses modern React patterns (hooks, functional components)
-3. Uses Tailwind CSS for styling
-4. Includes all necessary logic and state management
-5. Is production-ready code that can be directly executed
-6. CRITICAL: Use React.createElement() instead of JSX syntax
+AVAILABLE SHADCN COMPONENTS (use these instead of HTML elements):
+- Button: React.createElement(Button, { variant: 'default'|'destructive'|'outline'|'secondary'|'ghost', size: 'default'|'sm'|'lg'|'icon', onClick: fn }, 'Text')
+- Input: React.createElement(Input, { value, onChange: fn, placeholder: '...' })
+- Label: React.createElement(Label, {}, 'Label text')
+- Card: React.createElement(Card, { className: '...' }, children)
+- CardHeader, CardTitle, CardDescription, CardContent: Card sub-components
+- Badge: React.createElement(Badge, { variant: 'default'|'secondary'|'destructive'|'outline' }, 'Text')
+- Textarea: React.createElement(Textarea, { value, onChange: fn, rows: 4 })
+
+You can also use HTML elements: 'div', 'span', 'h1', 'h2', 'h3', 'p', 'img', 'form'
 
 Return a JSON object with this exact structure:
 {
   "name": "ComponentName",
   "description": "Brief description of what the app does",
-  "code": "The complete React component code as a string using React.createElement",
-  "componentType": "react" | "form" | "dashboard" | "tool",
-  "requiredData": ["optional array of data fields needed"]
+  "code": "The complete React component code using React.createElement",
+  "componentType": "react" | "form" | "dashboard" | "tool"
 }
 
-CRITICAL REQUIREMENTS:
-- DO NOT use JSX syntax (no <div>, <button>, etc.)
-- Use React.createElement() for all elements
-- Example: React.createElement('div', { className: 'p-4' }, 'Hello')
-- For multiple children, pass them as additional arguments or an array
-- Use Tailwind CSS classes in className prop
-- Make it visually appealing with the same design system (oklch colors, rounded corners, shadows)
-- Include error handling and loading states where appropriate
-- Make it interactive and functional
-- DO NOT include markdown code fences, just return the JSON
-- The code must be executable without any transpilation
+CRITICAL RULES:
+1. Use React.createElement() for ALL components (no JSX)
+2. NEVER define custom components inside (no const Button = ...)
+3. Use shadcn Button component instead of HTML button
+4. Use shadcn Input instead of HTML input
+5. Wrap content in Card components for better design
+6. Use proper Tailwind classes for layout (grid, flex)
+7. Support both light and dark modes with bg-background, text-foreground classes
 
-Example of correct format:
-const Component = () => {
+STYLING FOR LIGHT/DARK MODE (MANDATORY):
+NEVER use hardcoded colors like bg-black, bg-white, bg-gray-700, text-black, text-white
+ALWAYS use theme-aware classes:
+- Page background: 'bg-background'
+- Text color: 'text-foreground'
+- Card background: 'bg-card text-card-foreground'
+- Muted areas: 'bg-muted text-muted-foreground'  
+- Primary actions: 'bg-primary text-primary-foreground'
+- Secondary: 'bg-secondary text-secondary-foreground'
+- Borders: 'border border-border'
+- Accent: 'bg-accent text-accent-foreground'
+
+BUTTON STYLING (IMPORTANT FOR VISIBILITY):
+- Default variant: Good contrast in both modes
+- For number buttons: Use variant='secondary' (better visibility than outline)
+- For operators: Use variant='default' (primary color, best contrast)
+- For functions: Use variant='secondary' 
+- Add className for size: 'h-16 text-xl font-semibold'
+- Example: React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl' }, '7')
+
+EXAMPLE COUNTER (CORRECT WAY):
+const Counter = () => {
   const [count, setCount] = useState(0);
-  return React.createElement('div', { className: 'p-4' },
-    React.createElement('h1', { className: 'text-2xl font-bold' }, 'Counter: ' + count),
-    React.createElement('button', { 
-      className: 'bg-blue-500 text-white px-4 py-2 rounded',
-      onClick: () => setCount(count + 1)
-    }, 'Increment')
+  
+  return React.createElement('div', { className: 'min-h-screen bg-background p-8 flex items-center justify-center' },
+    React.createElement(Card, { className: 'w-full max-w-md' },
+      React.createElement(CardHeader, {},
+        React.createElement(CardTitle, {}, 'Counter App'),
+        React.createElement(CardDescription, {}, 'A simple counter with increment/decrement')
+      ),
+      React.createElement(CardContent, { className: 'space-y-6' },
+        React.createElement('div', { className: 'text-6xl font-bold text-center text-foreground' }, count),
+        React.createElement('div', { className: 'flex gap-4' },
+          React.createElement(Button, { 
+            variant: 'outline', 
+            className: 'flex-1',
+            onClick: () => setCount(count - 1) 
+          }, 'Decrement'),
+          React.createElement(Button, { 
+            variant: 'default', 
+            className: 'flex-1',
+            onClick: () => setCount(count + 1) 
+          }, 'Increment')
+        ),
+        React.createElement(Button, { 
+          variant: 'secondary', 
+          className: 'w-full',
+          onClick: () => setCount(0) 
+        }, 'Reset')
+      )
+    )
   );
-};`;
+};
+
+EXAMPLE CALCULATOR (4-COLUMN GRID - THEME AWARE):
+const Calculator = () => {
+  const [display, setDisplay] = useState('0');
+  const [operation, setOperation] = useState(null);
+  
+  const handleNumber = (num) => {
+    setDisplay(display === '0' ? String(num) : display + num);
+  };
+  
+  return React.createElement('div', { className: 'min-h-screen bg-background p-4 flex items-center justify-center' },
+    React.createElement(Card, { className: 'w-full max-w-sm shadow-2xl' },
+      React.createElement(CardHeader, {},
+        React.createElement(CardTitle, {}, 'Calculator')
+      ),
+      React.createElement(CardContent, { className: 'space-y-4' },
+        React.createElement('div', { className: 'text-right text-5xl font-bold text-foreground bg-muted rounded-xl p-6' }, display),
+        React.createElement('div', { className: 'grid grid-cols-4 gap-2' },
+          // Function row - use secondary for visibility
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-lg font-semibold', onClick: () => setDisplay('0') }, 'AC'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-lg font-semibold' }, '+/-'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-lg font-semibold' }, '%'),
+          React.createElement(Button, { variant: 'default', className: 'h-16 text-xl font-semibold', onClick: () => setOperation('÷') }, '÷'),
+          // Number rows - use secondary for better visibility than outline
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold', onClick: () => handleNumber(7) }, '7'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold', onClick: () => handleNumber(8) }, '8'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold', onClick: () => handleNumber(9) }, '9'),
+          React.createElement(Button, { variant: 'default', className: 'h-16 text-xl font-semibold', onClick: () => setOperation('×') }, '×'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold', onClick: () => handleNumber(4) }, '4'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold', onClick: () => handleNumber(5) }, '5'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold', onClick: () => handleNumber(6) }, '6'),
+          React.createElement(Button, { variant: 'default', className: 'h-16 text-xl font-semibold', onClick: () => setOperation('-') }, '-'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold', onClick: () => handleNumber(1) }, '1'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold', onClick: () => handleNumber(2) }, '2'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold', onClick: () => handleNumber(3) }, '3'),
+          React.createElement(Button, { variant: 'default', className: 'h-16 text-xl font-semibold', onClick: () => setOperation('+') }, '+'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold col-span-2', onClick: () => handleNumber(0) }, '0'),
+          React.createElement(Button, { variant: 'secondary', className: 'h-16 text-xl font-semibold' }, '.'),
+          React.createElement(Button, { variant: 'default', className: 'h-16 text-xl font-semibold' }, '=')
+        )
+      )
+    )
+  );
+};
+
+This creates a proper grid calculator that works in both light and dark mode!
+
+IMPORTANT:
+- Return valid JSON only (no markdown, no code fences)
+- MANDATORY: Use shadcn Button component, not HTML button
+- MANDATORY: Use theme-aware classes (bg-background, text-foreground, bg-card, bg-muted)
+- NEVER use hardcoded colors (no bg-black, bg-white, bg-gray-700, text-black, text-white)
+- Wrap all apps in Card component
+- grid grid-cols-4 gap-2 creates perfect 4-column layout
+- DO NOT create helper components inside
+- Apps must look good in BOTH light and dark mode`;
 
   const userPrompt = `Create a web application component with the following requirements:
 

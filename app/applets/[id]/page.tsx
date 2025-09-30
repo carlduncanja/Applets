@@ -6,7 +6,7 @@ import { useEntityStore } from "@/store/entity-store"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Code, Play, Loader2, Sparkles, History, RotateCcw } from "lucide-react"
+import { ArrowLeft, Code, Play, Loader2, Sparkles, History, RotateCcw, Save } from "lucide-react"
 import { toast } from "sonner"
 import React from 'react'
 import { loadComponentFromCode, ComponentErrorBoundary } from '@/lib/component-loader'
@@ -35,8 +35,11 @@ export default function AppletRunnerPage() {
   const [error, setError] = useState<string | null>(null)
   const [showIterateDialog, setShowIterateDialog] = useState(false)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const [showCodeEditor, setShowCodeEditor] = useState(false)
   const [iterationPrompt, setIterationPrompt] = useState('')
   const [isIterating, setIsIterating] = useState(false)
+  const [editedCode, setEditedCode] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     loadApp()
@@ -54,6 +57,7 @@ export default function AppletRunnerPage() {
       }
 
       setApp(result)
+      setEditedCode(result.data.code) // Initialize editor with current code
       
       // Execute the app
       await fetch('/api/apps/execute', {
@@ -146,6 +150,48 @@ export default function AppletRunnerPage() {
     }
   }
 
+  const handleSaveCode = async (saveAsNewVersion: boolean) => {
+    setIsSaving(true)
+    
+    try {
+      const response = await fetch('/api/apps/update-code', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appId: appId,
+          code: editedCode,
+          saveAsNewVersion
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save code')
+      }
+
+      toast.success(saveAsNewVersion ? 'Saved as new version!' : 'Code updated!')
+      setShowCodeEditor(false)
+      
+      // Reload the app
+      await loadApp()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save code')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleTestCode = () => {
+    try {
+      const Component = loadComponentFromCode(editedCode)
+      setAppComponent(() => Component)
+      setError(null)
+      toast.success('Code is valid! Changes applied.')
+    } catch (err: any) {
+      toast.error('Code has errors: ' + err.message)
+    }
+  }
+
   if (isLoading || isIterating) {
     return (
       <div className="min-h-screen-ios bg-background flex items-center justify-center">
@@ -177,17 +223,45 @@ export default function AppletRunnerPage() {
                 <p className="text-sm text-muted-foreground">{app.data.description}</p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setIsIterating(true);
+                  try {
+                    const response = await fetch('/api/apps/regenerate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ appId })
+                    });
+                    if (response.ok) {
+                      toast.success('App regenerated!');
+                      await loadApp();
+                    }
+                  } catch (error) {
+                    toast.error('Failed to regenerate');
+                  } finally {
+                    setIsIterating(false);
+                  }
+                }}
+                className="border-orange-500/50 hover:bg-orange-500/10"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Regenerate
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowIterateDialog(true)}
                 className="border-purple-500/50 hover:bg-purple-500/10"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
-                Improve with AI
+                Improve
               </Button>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setShowVersionHistory(true)}
               >
                 <History className="h-4 w-4 mr-2" />
@@ -195,10 +269,15 @@ export default function AppletRunnerPage() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowCode(!showCode)}
+                size="sm"
+                onClick={() => {
+                  setEditedCode(app.data.code);
+                  setShowCodeEditor(true);
+                }}
+                className="border-blue-500/50 hover:bg-blue-500/10"
               >
                 <Code className="h-4 w-4 mr-2" />
-                {showCode ? 'Hide' : 'View'} Code
+                Edit Code
               </Button>
               <Badge variant="secondary" className="capitalize">
                 {app.data.componentType}
@@ -226,10 +305,24 @@ export default function AppletRunnerPage() {
           {showCode && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Source Code</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Source Code</CardTitle>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditedCode(app.data.code);
+                      setShowCodeEditor(true);
+                      setShowCode(false);
+                    }}
+                  >
+                    <Code className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <pre className="text-sm bg-muted p-4 rounded-md overflow-auto max-h-96">
+                <pre className="text-sm bg-muted p-4 rounded-md overflow-auto max-h-96 font-mono">
                   {app.data.code}
                 </pre>
               </CardContent>
@@ -422,6 +515,82 @@ export default function AppletRunnerPage() {
 
           <AlertDialogFooter>
             <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Code Editor Dialog */}
+      <AlertDialog open={showCodeEditor} onOpenChange={setShowCodeEditor}>
+        <AlertDialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Code className="h-5 w-5 text-blue-600" />
+              Edit Code
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Modify the component code directly. Test your changes before saving.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="flex-1 overflow-auto py-4">
+            <Textarea
+              value={editedCode}
+              onChange={(e) => setEditedCode(e.target.value)}
+              className="font-mono text-sm min-h-[500px] resize-none"
+              spellCheck={false}
+            />
+          </div>
+
+          <div className="bg-muted/50 p-3 rounded-lg text-sm">
+            <p className="font-semibold mb-2 flex items-center gap-2">
+              <span className="text-blue-600">💡</span> Tips:
+            </p>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              <li>• Use React.createElement() for all components</li>
+              <li>• Available: Button, Input, Card, Badge, Label, Textarea</li>
+              <li>• Test changes before saving</li>
+              <li>• Save as new version to preserve current code</li>
+            </ul>
+          </div>
+
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={handleTestCode}
+              disabled={isSaving}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Test Code
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => handleSaveCode(false)}
+              disabled={isSaving || !editedCode.trim()}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Quick Save'
+              )}
+            </Button>
+            <Button
+              onClick={() => handleSaveCode(true)}
+              disabled={isSaving || !editedCode.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save as New Version'
+              )}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
