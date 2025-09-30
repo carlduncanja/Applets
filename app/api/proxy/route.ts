@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Fetch the URL
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AI-OS/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; Applets/1.0)',
       },
     });
 

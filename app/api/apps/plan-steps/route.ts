@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
           .join('\n')
       : '';
     
-    const systemPrompt = `You are a multi-step planning AI agent for AI-OS. Break down complex tasks into sequential steps.
+    const systemPrompt = `You are a multi-step planning AI agent for Applets. Break down complex tasks into sequential steps.
 
 Available apps: ${availableApps?.map((a: any) => a.name).join(', ') || 'none'}
 Available API keys: ${availableApiKeys?.join(', ') || 'none configured'}${schemasInfo}${conversationContext}

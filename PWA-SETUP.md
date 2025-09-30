@@ -1,6 +1,6 @@
 # PWA Setup Complete ✅
 
-Your AI-OS is now a fully functional Progressive Web App!
+Your Applets is now a fully functional Progressive Web App!
 
 ## 🎉 What's Been Set Up
 
@@ -40,21 +40,21 @@ Your AI-OS is now a fully functional Progressive Web App!
 ## 📱 How to Install
 
 ### **On iPhone/iPad:**
-1. Open Safari and navigate to your AI-OS URL
+1. Open Safari and navigate to your Applets URL
 2. Tap the Share button (square with arrow)
 3. Scroll down and tap "Add to Home Screen"
 4. Tap "Add" in the top right
-5. The AI-OS icon will appear on your home screen!
+5. The Applets icon will appear on your home screen!
 
 ### **On Android:**
-1. Open Chrome and navigate to your AI-OS URL
+1. Open Chrome and navigate to your Applets URL
 2. Tap the three dots menu (⋮)
 3. Tap "Install app" or "Add to Home Screen"
 4. Tap "Install"
 5. The app will be installed and added to your app drawer!
 
 ### **On Desktop (Chrome/Edge):**
-1. Open Chrome/Edge and navigate to your AI-OS URL
+1. Open Chrome/Edge and navigate to your Applets URL
 2. Click the install icon (⊕) in the address bar
 3. Click "Install"
 4. The app will open in its own window!

@@ -159,7 +159,7 @@ export default function SharePage() {
                   {sharedApps.length} App{sharedApps.length !== 1 ? 's' : ''} Shared
                 </CardTitle>
                 <CardDescription>
-                  Review and import {sharedApps.length === 1 ? 'this app' : 'these apps'} into your AI-OS
+                  Review and import {sharedApps.length === 1 ? 'this app' : 'these apps'} into your Applets
                 </CardDescription>
               </div>
             </div>

@@ -1504,7 +1504,7 @@ export default function HomePage() {
                 <Brain className="h-6 w-6 text-primary-foreground" />
               </div>
               <div className="hidden md:block">
-                <h1 className="text-xl font-bold text-foreground">AI-OS</h1>
+                <h1 className="text-xl font-bold text-foreground">Applets</h1>
                 <p className="text-sm text-muted-foreground">AI-powered operating system</p>
               </div>
             </div>
@@ -1988,7 +1988,7 @@ export default function HomePage() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Anyone with this link can import {selectedAppsForShare.length === 1 ? 'this app' : 'these apps'} into their AI-OS
+                Anyone with this link can import {selectedAppsForShare.length === 1 ? 'this app' : 'these apps'} into their Applets
               </p>
             </div>
           </div>

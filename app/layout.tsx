@@ -8,7 +8,7 @@ import { Toaster } from "sonner"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "AI-OS",
+  title: "Applets",
   description: "An AI-powered operating system for building and running applets",
   generator: "Cursor",
   icons: {
@@ -18,20 +18,20 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'AI-OS',
+    title: 'Applets',
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
     type: 'website',
-    siteName: 'AI-OS',
-    title: 'AI-OS',
+    siteName: 'Applets',
+    title: 'Applets',
     description: 'An AI-powered operating system for building and running applets',
   },
   twitter: {
     card: 'summary',
-    title: 'AI-OS',
+    title: 'Applets',
     description: 'An AI-powered operating system for building and running applets',
   },
 }
@@ -49,7 +49,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="AI-OS" />
+        <meta name="apple-mobile-web-app-title" content="Applets" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body className={`${inter.className} h-full bg-background text-foreground antialiased`}>

@@ -58,7 +58,7 @@ async function handleFetch(params: any) {
     const fetchOptions: RequestInit = {
       method,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AI-OS/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; Applets/1.0)',
         ...headers
       },
     };
@@ -108,7 +108,7 @@ async function handleProxy(params: any) {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AI-OS/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; Applets/1.0)',
       },
     });
 
@@ -137,7 +137,7 @@ async function handleScrape(params: any) {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AI-OS/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; Applets/1.0)',
       },
     });
 

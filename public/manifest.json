@@ -1,6 +1,6 @@
 {
-  "name": "AI-OS",
-  "short_name": "AI-OS",
+  "name": "Applets",
+  "short_name": "Applets",
   "description": "An AI-powered operating system for building and running applets",
   "start_url": "/",
   "display": "standalone",

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
           .join('\n')
       : '';
     
-    const systemPrompt = `You are an intent parser for AI-OS. Parse the user's request and determine their intent.
+    const systemPrompt = `You are an intent parser for Applets. Parse the user's request and determine their intent.
 
 Available apps: ${availableApps?.map((a: any) => a.name).join(', ') || 'none'}
 Available API keys: ${availableApiKeys?.join(', ') || 'none configured'}${schemasInfo}${conversationContext}

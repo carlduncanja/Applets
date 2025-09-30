@@ -1,4 +1,4 @@
-# AI-OS
+# Applets
 
 An AI-powered operating system that creates and runs fully functional applets from natural language. Built with Claude 4.5 Sonnet, Next.js, SQLite, and Tailwind CSS.
 
