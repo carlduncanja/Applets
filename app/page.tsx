@@ -10,6 +10,14 @@ export default function HomePage() {
 
   const examples = [
     {
+      title: "AI Applets",
+      description: "Generate apps with AI",
+      icon: Database,
+      path: "/applets",
+      color: "text-purple-500",
+      featured: true
+    },
+    {
       title: "Users",
       description: "Manage user entities",
       icon: Users,
@@ -74,15 +82,24 @@ export default function HomePage() {
           <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {examples.map((example) => {
               const Icon = example.icon
+              const featured = (example as any).featured
               return (
                 <Card 
                   key={example.path}
-                  className="flex flex-col aspect-square cursor-pointer transition-all hover:shadow-lg hover:scale-105 active:scale-95 border-2 hover:border-primary"
+                  className={`flex flex-col aspect-square cursor-pointer transition-all hover:shadow-lg hover:scale-105 active:scale-95 border-2 ${
+                    featured 
+                      ? 'border-purple-500/50 bg-gradient-to-br from-purple-500/5 to-pink-500/5' 
+                      : 'hover:border-primary'
+                  }`}
                   onClick={() => router.push(example.path)}
                 >
                   <CardContent className="flex-1 flex flex-col items-center justify-center gap-2 p-4">
-                    <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Icon className={`h-6 w-6 md:h-7 md:w-7 ${example.color}`} />
+                    <div className={`h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center ${
+                      featured 
+                        ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                        : 'bg-primary/10'
+                    }`}>
+                      <Icon className={`h-6 w-6 md:h-7 md:w-7 ${featured ? 'text-white' : example.color}`} />
                     </div>
                     <div className="text-center space-y-1">
                       <h3 className="font-semibold text-sm md:text-base">{example.title}</h3>

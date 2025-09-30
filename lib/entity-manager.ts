@@ -87,7 +87,7 @@ export class EntityManager {
     try {
       // Check if index already exists
       const existing = this.db.prepare(`
-        SELECT name FROM entity_indexes WHERE index_name = ?
+        SELECT index_name FROM entity_indexes WHERE index_name = ?
       `).get(indexName);
 
       if (existing) return;
