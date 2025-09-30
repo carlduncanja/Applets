@@ -16,6 +16,7 @@ export function getAIClient() {
 export interface AppGenerationRequest {
   prompt: string;
   appName: string;
+  image?: string;
 }
 
 export interface GeneratedApp {
@@ -315,6 +316,7 @@ IMPORTANT:
 
 Application Name: ${request.appName}
 Description: ${request.prompt}
+${request.image ? '\n\nReference image provided: Use this as design inspiration for colors, layout, and styling.' : ''}
 
 Generate a complete, working React component for this application.`;
 

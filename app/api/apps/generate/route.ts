@@ -4,7 +4,7 @@ import { getEntityManager } from '@/lib/entity-manager';
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, appName } = await request.json();
+    const { prompt, appName, image } = await request.json();
     
     if (!prompt || !appName) {
       return NextResponse.json(
@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     // Generate the app using Claude
     const generatedApp = await generateApplication({
       prompt,
-      appName
+      appName,
+      image
     });
 
     // Store the generated app in the database

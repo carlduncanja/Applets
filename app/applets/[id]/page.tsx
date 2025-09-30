@@ -41,6 +41,7 @@ export default function AppletRunnerPage() {
   const [isIterating, setIsIterating] = useState(false)
   const [editedCode, setEditedCode] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
     loadApp()
@@ -72,13 +73,17 @@ export default function AppletRunnerPage() {
         const Component = loadComponentFromCode(result.data.code)
         setAppComponent(() => Component)
         setError(null)
+        // Small delay to ensure component is ready
+        setTimeout(() => setIsReady(true), 0)
       } catch (err: any) {
         console.error('Failed to load component:', err)
         setError(err.message || 'Failed to render component')
+        setIsReady(true)
       }
     } catch (error: any) {
       toast.error('Failed to load app')
       setError(error.message)
+      setIsReady(true)
     } finally {
       setIsLoading(false)
     }
@@ -195,18 +200,12 @@ export default function AppletRunnerPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="h-screen bg-background">
-        <AppLoadingSkeleton message="Loading app..." />
-      </div>
-    )
+  if (isLoading || !app || !isReady) {
+    return null
   }
 
-  if (!app) return null
-
   return (
-    <div className="h-screen overflow-hidden bg-background flex flex-col relative">
+    <div className="h-screen overflow-hidden bg-background flex flex-col relative animate-in fade-in duration-200">
       <header className="border-b border-border bg-card z-50 flex-shrink-0">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between max-w-7xl mx-auto">

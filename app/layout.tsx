@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Generative Application",
-  description: "AI-powered app generator with schema-flexible database",
+  description: "Build Applets with AI - Schema-flexible database and instant app generation",
   generator: "Cursor",
 }
 
