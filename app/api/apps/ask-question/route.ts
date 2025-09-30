@@ -4,7 +4,7 @@ import { getEntityManager } from '@/lib/entity-manager';
 
 export async function POST(request: NextRequest) {
   try {
-    const { question, relevantEntityTypes } = await request.json();
+    const { question, relevantEntityTypes, chatHistory } = await request.json();
     
     if (!question) {
       return NextResponse.json(
@@ -55,16 +55,24 @@ export async function POST(request: NextRequest) {
 
     const client = getAIClient();
     
+    const conversationContext = chatHistory && chatHistory.length > 0 
+      ? `\n\nPrevious conversation:\n${chatHistory.slice(-5).map((msg: any) => 
+          `${msg.role === 'agent' ? 'Assistant' : 'User'}: ${msg.content || msg.question || msg.answer}`
+        ).join('\n')}`
+      : '';
+    
     const systemPrompt = `You are a helpful assistant that answers questions about the user's data.
 
 Total entities in database: ${totalEntities}
-Entity types available: ${allEntityTypes.join(', ') || 'none'}
+Entity types available: ${allEntityTypes.join(', ') || 'none'}${conversationContext}
 
 Available data:
 ${JSON.stringify(contextData, null, 2)}
 
 Important:
 - Answer questions based ONLY on the data provided above
+- Use previous conversation context to understand follow-up questions and references
+- If user says "it", "that", "those", refer to previous context
 - If asking about an app that stores data locally (not in database), explain that the app doesn't persist data to the database
 - Be concise and helpful
 - Format lists with bullet points or numbers

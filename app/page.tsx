@@ -63,7 +63,7 @@ export default function HomePage() {
     steps: any[];
     currentStep: number;
     stepData: any[];
-    messages: Array<{ role: 'agent' | 'system'; content: string; timestamp: number }>;
+    messages: Array<{ role: 'agent' | 'system' | 'user'; content: string; timestamp: number }>;
   } | null>(null)
 
   useEffect(() => {
@@ -216,6 +216,12 @@ export default function HomePage() {
     setShowAppSuggestions(false)
 
     try {
+      // Gather conversation history (combine chatHistory and multiStepExecution messages)
+      const allMessages = [
+        ...chatHistory.map(c => ({ role: 'user', question: c.question, answer: c.answer })),
+        ...(multiStepExecution?.messages || [])
+      ]
+      
       // First, check if this needs multi-step planning
       const planResponse = await fetch('/api/apps/plan-steps', {
         method: 'POST',
@@ -224,6 +230,7 @@ export default function HomePage() {
           prompt: composerText.trim(),
           availableApps: apps.map(a => ({ name: a.data.name, id: a.id })),
           availableApiKeys: apiKeys.map(k => k.data.name),
+          chatHistory: allMessages,
           currentStep: null,
           stepData: null
         })
@@ -240,11 +247,18 @@ export default function HomePage() {
             steps: plan.steps || [],
             currentStep: 0,
             stepData: [],
-            messages: [{
-              role: 'agent',
-              content: `I'll help you with that. Here's my plan:\n${plan.steps?.map((s: any, i: number) => `${i + 1}. ${s.description}`).join('\n')}\n\nLet's start...`,
-              timestamp: Date.now()
-            }]
+            messages: [
+              {
+                role: 'user',
+                content: composerText.trim(),
+                timestamp: Date.now()
+              },
+              {
+                role: 'agent',
+                content: `I'll help you with that. Here's my plan:\n${plan.steps?.map((s: any, i: number) => `${i + 1}. ${s.description}`).join('\n')}\n\nLet's start...`,
+                timestamp: Date.now()
+              }
+            ]
           })
           setComposerText('')
           setViewMode('chat')
@@ -263,7 +277,8 @@ export default function HomePage() {
         body: JSON.stringify({
           prompt: composerText.trim(),
           availableApps: apps.map(a => ({ name: a.data.name, id: a.id })),
-          availableApiKeys: apiKeys.map(k => k.data.name)
+          availableApiKeys: apiKeys.map(k => k.data.name),
+          chatHistory: allMessages
         })
       })
 
@@ -304,7 +319,8 @@ export default function HomePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            question: intent.question
+            question: intent.question,
+            chatHistory: chatHistory
           })
         })
         
@@ -490,15 +506,40 @@ export default function HomePage() {
     
     if (!step) {
       // All steps complete
-      setMultiStepExecution(prev => prev ? {
-        ...prev,
-        active: false,
-        messages: [...prev.messages, {
-          role: 'agent',
-          content: plan.finalMessage || 'All steps completed successfully!',
+      const finalMessage = plan.finalMessage || 'All steps completed successfully!'
+      
+      setMultiStepExecution(prev => {
+        if (!prev) return null
+        
+        const updatedMessages: Array<{ role: 'agent' | 'system' | 'user'; content: string; timestamp: number }> = [
+          ...prev.messages, 
+          {
+            role: 'agent' as const,
+            content: finalMessage,
+            timestamp: Date.now()
+          }
+        ]
+        
+        // Also add to regular chat history for context continuity
+        const userMessage = prev.originalPrompt
+        const agentSummary = updatedMessages
+          .filter(m => m.role === 'agent' || m.role === 'system')
+          .map(m => m.content)
+          .join('\n\n')
+        
+        setChatHistory(prevChat => [...prevChat, {
+          question: userMessage,
+          answer: agentSummary,
           timestamp: Date.now()
-        }]
-      } : null)
+        }])
+        
+        return {
+          ...prev,
+          active: false,
+          messages: updatedMessages
+        }
+      })
+      
       toast.success('Task completed!')
       loadApps()
       return
@@ -524,7 +565,8 @@ export default function HomePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            question: step.query
+            question: step.query,
+            chatHistory: multiStepExecution?.messages || []
           })
         })
 
@@ -966,7 +1008,13 @@ export default function HomePage() {
                 {/* Multi-step agent conversation */}
                 {multiStepExecution?.messages.map((msg, index) => (
                   <div key={index} className="space-y-2">
-                    {msg.role === 'agent' ? (
+                    {msg.role === 'user' ? (
+                      <div className="flex justify-end">
+                        <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-3">
+                          <p className="text-sm">{msg.content}</p>
+                        </div>
+                      </div>
+                    ) : msg.role === 'agent' ? (
                       <div className="flex justify-start">
                         <div className="max-w-[85%]">
                           <div className="flex items-start gap-2">

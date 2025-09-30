@@ -3,7 +3,7 @@ import { getAIClient } from '@/lib/ai-client';
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, availableApps, availableApiKeys } = await request.json();
+    const { prompt, availableApps, availableApiKeys, chatHistory } = await request.json();
     
     if (!prompt) {
       return NextResponse.json(
@@ -21,12 +21,19 @@ export async function POST(request: NextRequest) {
 
     const client = getAIClient();
     
+    const conversationContext = chatHistory && chatHistory.length > 0 
+      ? `\n\nPrevious conversation:\n${chatHistory.slice(-5).map((msg: any) => 
+          `${msg.role === 'agent' ? 'Assistant' : 'User'}: ${msg.content || msg.question || msg.answer}`
+        ).join('\n')}`
+      : '';
+    
     const systemPrompt = `You are an intent parser for AI-OS. Parse the user's request and determine their intent.
 
 Available apps: ${availableApps?.map((a: any) => a.name).join(', ') || 'none'}
-Available API keys: ${availableApiKeys?.join(', ') || 'none configured'}
+Available API keys: ${availableApiKeys?.join(', ') || 'none configured'}${conversationContext}
 
 If user wants to create an app that requires an API key not in the list, inform them in the description.
+Use previous conversation context to understand references like "it", "that one", "the same", etc.
 
 Determine if the user wants to:
 1. OPEN an app

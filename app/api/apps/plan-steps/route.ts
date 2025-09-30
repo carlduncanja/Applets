@@ -3,7 +3,7 @@ import { getAIClient } from '@/lib/ai-client';
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, availableApps, currentStep, stepData, availableApiKeys } = await request.json();
+    const { prompt, availableApps, currentStep, stepData, availableApiKeys, chatHistory } = await request.json();
     
     if (!prompt) {
       return NextResponse.json(
@@ -14,11 +14,19 @@ export async function POST(request: NextRequest) {
 
     const client = getAIClient();
     
+    const conversationContext = chatHistory && chatHistory.length > 0 
+      ? `\n\nPrevious conversation:\n${chatHistory.slice(-5).map((msg: any) => 
+          `${msg.role === 'agent' ? 'Assistant' : 'User'}: ${msg.content || msg.question || msg.answer}`
+        ).join('\n')}`
+      : '';
+    
     const systemPrompt = `You are a multi-step planning AI agent for AI-OS. Break down complex tasks into sequential steps.
 
 Available apps: ${availableApps?.map((a: any) => a.name).join(', ') || 'none'}
-Available API keys: ${availableApiKeys?.join(', ') || 'none configured'}
+Available API keys: ${availableApiKeys?.join(', ') || 'none configured'}${conversationContext}
 ${currentStep ? `Current step: ${currentStep}\nPrevious step data: ${JSON.stringify(stepData)}` : ''}
+
+Use previous conversation context to understand references and maintain continuity.
 
 Your job is to:
 1. Analyze the user's request
