@@ -1,12 +1,38 @@
 /**
  * Extracts entity schema information from app code
  * by analyzing fetch calls to /api/entities
+ * 
+ * This now works alongside schema-discovery.ts:
+ * - schema-discovery.ts: Scans actual database for entity types and infers schemas
+ * - schema-extractor.ts: Parses app code to find which entities the app uses
  */
 
 export interface EntitySchema {
   entityType: string;
   fields: string[];
   example: Record<string, any>;
+}
+
+/**
+ * Extract which entity types an app uses from its code
+ */
+export function extractEntityTypesFromCode(code: string): string[] {
+  const entityTypes = new Set<string>();
+  
+  try {
+    // Match entityType: 'something' or entityType: "something"
+    const entityTypeRegex = /entityType:\s*['"`]([^'"`]+)['"`]/g;
+    let match;
+    
+    while ((match = entityTypeRegex.exec(code)) !== null) {
+      entityTypes.add(match[1]);
+    }
+    
+    return Array.from(entityTypes);
+  } catch (error) {
+    console.error('Error extracting entity types:', error);
+    return [];
+  }
 }
 
 export function extractSchemasFromCode(code: string): EntitySchema[] {

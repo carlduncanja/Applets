@@ -112,11 +112,16 @@ Examples of multi-step tasks:
 
 Single-step tasks (return needsMultiStep: false):
 - "create a habit tracker app" → Direct app creation (intent: "create", appPrompt: "Create a habit tracking app...")
-- "delete all notes" → Direct action (intent: "data_action")
+- "delete all notes" → Direct action (intent: "data_action") - REQUIRES CONFIRMATION
 - "create 5 todos" → Direct action (intent: "data_action")
 - "what do I have to do today" → Direct query (intent: "question")
 - "add dark mode to calculator" → Direct improvement (intent: "improve", targetApp: "Calculator", improvementPrompt: "add dark mode")
-- "fix the notes bug" → Direct improvement (intent: "improve", targetApp: "Notes", improvementPrompt: "fix bugs")`;
+- "fix the notes bug" → Direct improvement (intent: "improve", targetApp: "Notes", improvementPrompt: "fix bugs")
+- "set all kanban to done" → Direct bulk update (intent: "data_action") - REQUIRES CONFIRMATION
+- "mark all todos complete" → Direct bulk update (intent: "data_action") - REQUIRES CONFIRMATION
+- "delete all completed tasks" → Direct bulk delete (intent: "data_action") - REQUIRES CONFIRMATION
+
+IMPORTANT: Simple bulk updates/deletes should be single-step with confirmation, NOT multi-step!`;
 
     const response = await client.chat.completions.create({
       model: 'claude-sonnet-4-5-20250929',

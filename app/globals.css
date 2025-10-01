@@ -92,7 +92,22 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+  }
+
+  /* Dotted background pattern */
+  .bg-background {
+    background-color: oklch(1 0 0);
+    background-image: 
+      radial-gradient(circle, rgba(128, 128, 128, 0.15) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .dark .bg-background {
+    background-color: oklch(0.09 0 0);
+    background-image: 
+      radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 20px 20px;
   }
 
   .min-h-screen-ios {

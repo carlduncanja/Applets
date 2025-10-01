@@ -1,11 +1,11 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "sonner"
 
-const inter = Inter({ subsets: ["latin"] })
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Applets",
@@ -52,7 +52,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Applets" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
-      <body className={`${inter.className} h-full bg-background text-foreground antialiased`}>
+      <body className={`${spaceGrotesk.className} h-full bg-background text-foreground antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

@@ -13,6 +13,8 @@ import { loadComponentFromCode, ComponentErrorBoundary } from '@/lib/component-l
 import { Textarea } from "@/components/ui/textarea"
 import { AppLoadingSkeleton, AppIteratingSkeleton } from "@/components/AppLoadingSkeleton"
 import dynamic from 'next/dynamic'
+import { GlobalChatFAB } from "@/components/GlobalChatFAB"
+// Old chat processor removed - now using chain-based processor via API routes
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 import {
@@ -36,11 +38,8 @@ export default function AppletRunnerPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [AppComponent, setAppComponent] = useState<React.ComponentType<any> | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showIterateDialog, setShowIterateDialog] = useState(false)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
   const [showEditor, setShowEditor] = useState(false)
-  const [iterationPrompt, setIterationPrompt] = useState('')
-  const [isIterating, setIsIterating] = useState(false)
   const [editedCode, setEditedCode] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isReady, setIsReady] = useState(false)
@@ -128,44 +127,6 @@ export default function AppletRunnerPage() {
     }
   }
 
-  const handleIterate = async () => {
-    if (!iterationPrompt.trim()) {
-      toast.error('Please describe the changes you want')
-      return
-    }
-
-    setIsIterating(true)
-    setShowIterateDialog(false)
-    const promptText = iterationPrompt
-    setIterationPrompt('')
-    
-    toast.success('Improving app in background...')
-
-    // Start iteration in background without waiting
-    fetch('/api/apps/iterate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        appId: appId,
-        iterationPrompt: promptText
-      })
-    }).then(async (response) => {
-      setIsIterating(false)
-      
-      if (response.ok) {
-        const result = await response.json()
-        toast.success(`App updated! ${result.changes || 'Improvements applied'}`)
-        // Reload the app
-        await loadApp()
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to improve app')
-      }
-    }).catch((error) => {
-      setIsIterating(false)
-      toast.error('Failed to improve app: ' + error.message)
-    })
-  }
 
   const handleRollback = async (targetVersion: number) => {
     setShowVersionHistory(false)
@@ -281,16 +242,12 @@ export default function AppletRunnerPage() {
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push('/')}
-                className="h-9 w-9"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="border-l border-border pl-3">
+              <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center cursor-pointer" onClick={() => router.push('/')}>
+                <ArrowLeft className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <div>
                 <h1 className="text-xl font-bold text-foreground">{app.data.name}</h1>
+                <p className="text-sm text-muted-foreground">v{app.data.version || 1}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -299,7 +256,8 @@ export default function AppletRunnerPage() {
                 size="sm"
                 onClick={() => setShowVersionHistory(true)}
               >
-                v{app.data.version || 1}
+                <History className="h-4 w-4 mr-1" />
+                History
               </Button>
               <Button
                 variant="ghost"
@@ -356,9 +314,7 @@ export default function AppletRunnerPage() {
       )}
 
       <main className="flex-1 overflow-y-auto relative">
-        {isIterating ? (
-          <AppIteratingSkeleton />
-        ) : showEditor ? (
+        {showEditor ? (
           <div className="min-h-screen flex flex-col bg-background">
             <div className="h-[calc(100vh-200px)] overflow-hidden">
               <MonacoEditor
@@ -501,67 +457,6 @@ export default function AppletRunnerPage() {
         )}
       </main>
 
-      {/* Floating Action Button for AI Improvements */}
-      <div className={`fixed right-6 z-50 ${showEditor ? 'bottom-24' : 'bottom-6'}`}>
-        {!showIterateDialog ? (
-          <Button
-            size="lg"
-            onClick={() => setShowIterateDialog(true)}
-            variant="default"
-            className="h-14 w-14 rounded-full shadow-2xl p-0"
-          >
-            <Brain className="h-6 w-6" />
-          </Button>
-        ) : (
-          <Card className="w-96 shadow-2xl">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Brain className="h-4 w-4" />
-                  Improve App
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowIterateDialog(false);
-                    setIterationPrompt('');
-                  }}
-                >
-                  ×
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea
-                placeholder="Describe improvements... (e.g., Add dark mode toggle, change colors to blue, add sound effects)"
-                value={iterationPrompt}
-                onChange={(e) => setIterationPrompt(e.target.value)}
-                className="min-h-24 resize-none"
-                autoFocus
-              />
-              <Button
-                onClick={handleIterate}
-                disabled={!iterationPrompt.trim() || isIterating}
-                variant="default"
-                className="w-full"
-              >
-                {isIterating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Improving...
-                  </>
-                ) : (
-                  <>
-                    <Brain className="h-4 w-4 mr-2" />
-                    Improve App
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
 
 
       {/* Version History Dialog */}
@@ -718,6 +613,10 @@ export default function AppletRunnerPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Global Chat FAB */}
+      {/* Global Chat FAB - Handles chat processing via API routes */}
+      <GlobalChatFAB />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateApplication } from '@/lib/ai-client';
 import { getEntityManager } from '@/lib/entity-manager';
-import { extractSchemasFromCode } from '@/lib/schema-extractor';
+import { extractSchemasFromCode, extractEntityTypesFromCode } from '@/lib/schema-extractor';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
 
     // Extract schema information from the generated code
     const schemas = extractSchemasFromCode(generatedApp.code);
+    
+    // Extract entity types (simpler list of what entities this app uses)
+    const entityTypes = extractEntityTypesFromCode(generatedApp.code);
 
     // Store the generated app in the database
     const em = getEntityManager();
@@ -41,7 +44,8 @@ export async function POST(request: NextRequest) {
       code: generatedApp.code,
       componentType: generatedApp.componentType,
       requiredData: generatedApp.requiredData || [],
-      schemas: schemas, // Store extracted schemas
+      schemas: schemas, // Detailed schema information (legacy, for backwards compatibility)
+      entityTypes: entityTypes, // Simple list of entity types this app uses
       status: 'active',
       version: 1,
       createdBy: 'user',
